@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 
-import { FaUser, FaCut, FaHandSparkles, FaPalette, FaSpa } from "react-icons/fa";
+import { FaUser, FaCut, FaHandSparkles, FaPalette } from "react-icons/fa";
 
 export default function Home() {
   return (
