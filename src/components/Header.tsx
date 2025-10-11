@@ -30,7 +30,7 @@ export default function Header() {
       </nav>
 
       <div className="flex gap-4 items-center">
-        <Link href="/login" className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full">
+        <Link href="/auth/login" className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full">
           <FaUser className="text-sm" />
           <span className="text-sm">Iniciar Sesión</span>
         </Link>
