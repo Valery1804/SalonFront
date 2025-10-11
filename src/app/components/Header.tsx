@@ -21,7 +21,7 @@ export default function Header() {
         <Link href="#servicios" className="text-gray-300 hover:text-yellow-400 transition-colors">
           Servicios
         </Link>
-        <Link href="#reservar" className="text-gray-300 hover:text-yellow-400 transition-colors">
+        <Link href="/reservar" className="text-gray-300 hover:text-yellow-400 transition-colors">
           Reservar Cita
         </Link>
         <Link href="#contacto" className="text-gray-300 hover:text-yellow-400 transition-colors">
@@ -34,7 +34,7 @@ export default function Header() {
           <FaUser className="text-sm" />
           <span className="text-sm">Iniciar Sesión</span>
         </Link>
-        <Link href="#reservar" className="bg-gradient-to-r from-pink-500 to-orange-400 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-pink-500/50 transition-all font-medium text-sm">
+        <Link href="/reservar" className="bg-gradient-to-r from-pink-500 to-orange-400 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-pink-500/50 transition-all font-medium text-sm">
           Agendar Cita
         </Link>
       </div>
