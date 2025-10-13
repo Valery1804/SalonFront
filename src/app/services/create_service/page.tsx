@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createService, CreateServiceDTO } from "@/service/serviceService";
+import { getErrorMessage } from "@/utils/error";
 
 export default function CreateServicePage() {
   const [formData, setFormData] = useState<CreateServiceDTO>({
@@ -17,10 +18,20 @@ export default function CreateServicePage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
+    let normalizedValue: string | number | boolean = value;
+
+    if (e.target instanceof HTMLInputElement) {
+      if (e.target.type === "checkbox") {
+        normalizedValue = e.target.checked;
+      } else if (e.target.type === "number") {
+        normalizedValue = Number(value);
+      }
+    }
+
     setFormData({
       ...formData,
-      [name]: type === "checkbox" ? checked : type === "number" ? Number(value) : value,
+      [name]: normalizedValue,
     });
   };
 
@@ -39,8 +50,8 @@ export default function CreateServicePage() {
         durationMinutes: 0,
         isActive: true,
       });
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "No se pudo crear el servicio"));
     } finally {
       setLoading(false);
     }

@@ -2,9 +2,37 @@
 
 import { register } from "@/service/authService";
 import { useState } from "react";
+import { getErrorMessage } from "@/utils/error";
+
+interface RegisterForm {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
+const fields: Array<keyof RegisterForm> = [
+  "email",
+  "password",
+  "confirmPassword",
+  "firstName",
+  "lastName",
+  "phone",
+];
+
+const fieldLabels: Record<keyof RegisterForm, string> = {
+  email: "Email",
+  password: "Password",
+  confirmPassword: "Confirm Password",
+  firstName: "Nombre",
+  lastName: "Apellido",
+  phone: "Telefono",
+};
 
 export default function Register() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RegisterForm>({
     email: "",
     password: "",
     confirmPassword: "",
@@ -16,7 +44,12 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const key = name as keyof RegisterForm;
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,8 +63,8 @@ export default function Register() {
       localStorage.setItem("user", JSON.stringify(data.user));
       alert(`Usuario registrado: ${data.user.fullName}`);
       window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "No se pudo registrar el usuario"));
     } finally {
       setLoading(false);
     }
@@ -45,13 +78,13 @@ export default function Register() {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {Object.keys(form).map((key) => (
-            <div key={key}>
-              <label className="block font-semibold mb-2 capitalize">{key}</label>
+          {fields.map((field) => (
+            <div key={field}>
+              <label className="block font-semibold mb-2">{fieldLabels[field]}</label>
               <input
-                name={key}
-                type={key.includes("password") ? "password" : "text"}
-                value={(form as any)[key]}
+                name={field}
+                type={field.includes("password") ? "password" : field === "email" ? "email" : "text"}
+                value={form[field]}
                 onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-600"
