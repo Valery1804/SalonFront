@@ -2,30 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { login } from "@/service/authService";
 import { getErrorMessage } from "@/utils/error";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function Login() {
+  const { login: loginUser, authenticating } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError("");
-    setLoading(true);
 
     try {
-      const data = await login(email, password);
-      localStorage.setItem("token", data.accessToken);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      const data = await loginUser(email, password);
       alert(`Bienvenido ${data.user.firstName}`);
       window.location.href = "/";
-    } catch (error: unknown) {
-      setError(getErrorMessage(error, "No se pudo iniciar sesión"));
-    } finally {
-      setLoading(false);
+    } catch (caughtError: unknown) {
+      setError(getErrorMessage(caughtError, "No se pudo iniciar sesion"));
     }
   };
 
@@ -33,23 +28,23 @@ export default function Login() {
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-purple-900 to-indigo-900 py-12 px-4">
       <div className="bg-white text-black rounded-xl shadow-2xl p-8 w-full max-w-md">
         <h2 className="text-3xl font-bold text-purple-800 mb-6 text-center">
-          Iniciar Sesión
+          Iniciar Sesion
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
-            placeholder="Correo electrónico"
+            placeholder="Correo electronico"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
           <input
             type="password"
-            placeholder="Contraseña"
+            placeholder="Contrasena"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
@@ -58,16 +53,16 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={authenticating}
             className="w-full bg-pink-600 text-white py-3 rounded-full hover:bg-pink-500 transition-colors font-semibold"
           >
-            {loading ? "Ingresando..." : "Ingresar"}
+            {authenticating ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
 
         <div className="flex justify-between text-sm text-purple-800 mt-4">
           <Link href="/recuperar-password" className="hover:underline">
-            ¿Olvidaste tu contraseña?
+            Olvidaste tu contrasena?
           </Link>
           <Link href="/auth/register" className="hover:underline font-semibold">
             Registrarse

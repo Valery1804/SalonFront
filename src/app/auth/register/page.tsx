@@ -3,6 +3,7 @@
 import { register } from "@/service/authService";
 import { useState } from "react";
 import { getErrorMessage } from "@/utils/error";
+import { useAuth } from "@/providers/AuthProvider";
 
 interface RegisterForm {
   email: string;
@@ -32,6 +33,7 @@ const fieldLabels: Record<keyof RegisterForm, string> = {
 };
 
 export default function Register() {
+  const { setSession } = useAuth();
   const [form, setForm] = useState<RegisterForm>({
     email: "",
     password: "",
@@ -59,8 +61,7 @@ export default function Register() {
 
     try {
       const data = await register(form);
-      localStorage.setItem("token", data.accessToken);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      setSession(data);
       alert(`Usuario registrado: ${data.user.fullName}`);
       window.location.href = "/";
     } catch (error: unknown) {

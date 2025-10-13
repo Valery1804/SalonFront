@@ -2,8 +2,18 @@
 
 import Link from "next/link";
 import { FaUser } from "react-icons/fa";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function Header() {
+  const { user, logout, initializing } = useAuth();
+
+  const displayName = user?.firstName ?? user?.email ?? "";
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = "/";
+  };
+
   return (
     <header className="flex justify-between items-center px-8 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-xl fixed top-0 left-0 w-full z-50 border-b border-slate-700">
       <div className="flex items-center gap-3">
@@ -30,10 +40,29 @@ export default function Header() {
       </nav>
 
       <div className="flex gap-4 items-center">
-        <Link href="/auth/login" className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full">
-          <FaUser className="text-sm" />
-          <span className="text-sm">Iniciar Sesión</span>
-        </Link>
+        {!initializing && user ? (
+          <>
+            <div className="flex items-center gap-2 text-white border border-white/30 px-4 py-2 rounded-full">
+              <FaUser className="text-sm" />
+              <span className="text-sm">{displayName}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-sm text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full"
+            >
+              Cerrar Sesion
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/auth/login"
+            className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full"
+          >
+            <FaUser className="text-sm" />
+            <span className="text-sm">Iniciar Sesion</span>
+          </Link>
+        )}
         <Link href="/reservar" className="bg-gradient-to-r from-pink-500 to-orange-400 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-pink-500/50 transition-all font-medium text-sm">
           Agendar Cita
         </Link>
