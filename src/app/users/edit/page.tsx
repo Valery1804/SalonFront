@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { updateUser, getUserById, UserResponse, UpdateUserDTO } from "@/service/userService";
-import { useRouter } from "next/navigation";
+import { getErrorMessage } from "@/utils/error";
 
 interface FormData {
   email: string;
@@ -15,12 +15,11 @@ interface FormData {
 }
 
 export default function UpdateUserPage() {
-  const router = useRouter();
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const userId = "ID_DEL_USUARIO_A_ACTUALIZAR"; // Cambia por params si quieres dinámico
+  const userId = "ID_DEL_USUARIO_A_ACTUALIZAR";
 
   const [formData, setFormData] = useState<FormData>({
     email: "",
@@ -46,19 +45,24 @@ export default function UpdateUserPage() {
           isActive: data.isActive,
           emailVerificationToken: "",
         });
-      } catch (err: any) {
-        setMessage(err.message);
+      } catch (error: unknown) {
+        setMessage(getErrorMessage(error, "No se pudo cargar el usuario"));
       }
     };
     fetchUser();
   }, [userId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    const target = e.target;
+    const { name, value } = target;
+
+    const normalizedValue =
+      target instanceof HTMLInputElement && target.type === "checkbox" ? target.checked : value;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: normalizedValue,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,8 +76,8 @@ export default function UpdateUserPage() {
       await updateUser(userId, updateData);
       setMessage("Usuario actualizado exitosamente");
       // router.push("/users"); // redirigir opcionalmente
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "No se pudo actualizar el usuario"));
     } finally {
       setLoading(false);
     }

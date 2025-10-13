@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getErrorMessage } from "@/utils/error";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -33,8 +34,8 @@ export default function ForgotPassword() {
       }
 
       setMessage("✅ Se ha enviado un correo para restablecer tu contraseña.");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Error al solicitar recuperación"));
     } finally {
       setLoading(false);
     }

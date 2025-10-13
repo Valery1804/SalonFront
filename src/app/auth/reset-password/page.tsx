@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { getErrorMessage } from "@/utils/error";
 
 export default function ResetPassword() {
   const searchParams = useSearchParams();
@@ -44,8 +45,8 @@ export default function ResetPassword() {
       }
 
       setMessage("✅ Tu contraseña se ha actualizado correctamente.");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "No se pudo restablecer la contrasena"));
     } finally {
       setLoading(false);
     }

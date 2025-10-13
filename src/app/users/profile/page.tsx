@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getMyProfile, updateMyProfile, UserResponse, UpdateProfileDTO } from "@/service/userService";
+import { getErrorMessage } from "@/utils/error";
 
 interface FormData {
   email: string;
@@ -42,19 +43,24 @@ export default function ProfilePage() {
           isActive: Boolean(data.isActive),
           emailVerificationToken: "",
         });
-      } catch (err: any) {
-        setMessage(err.message);
+      } catch (error: unknown) {
+        setMessage(getErrorMessage(error, "No se pudo obtener el perfil"));
       }
     };
     fetchProfile();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    const target = e.target;
+    const { name, value } = target;
+
+    const normalizedValue =
+      target instanceof HTMLInputElement && target.type === "checkbox" ? target.checked : value;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: normalizedValue,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,8 +74,8 @@ export default function ProfilePage() {
       const updated = await updateMyProfile(updateData);
       setUser(updated);
       setMessage("Perfil actualizado exitosamente");
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "No se pudo actualizar el perfil"));
     } finally {
       setLoading(false);
     }

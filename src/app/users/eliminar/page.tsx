@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { deleteUser } from "@/service/userService";
+import { getErrorMessage } from "@/utils/error";
 
 interface DeleteButtonProps {
   userId: string;
@@ -22,8 +23,8 @@ export default function DeleteUserButton({ userId, onDeleted }: DeleteButtonProp
       await deleteUser(userId);
       alert("Usuario eliminado exitosamente");
       if (onDeleted) onDeleted(); // actualizar lista si hay callback
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "No se pudo eliminar el usuario"));
     } finally {
       setLoading(false);
     }

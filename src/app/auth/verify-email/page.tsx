@@ -1,57 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { getErrorMessage } from "@/utils/error";
 
-export default function VerifyEmailPage() {
-  const searchParams = useSearchParams();
-  const [message, setMessage] = useState("Verificando tu correo...");
-  const [loading, setLoading] = useState(true);
+interface VerifyEmailState {
+  message: string;
+  loading: boolean;
+}
 
-  useEffect(() => {
-    const token = searchParams.get("token");
-
-    if (!token) {
-      setMessage("❌ Token de verificación no encontrado.");
-      setLoading(false);
-      return;
-    }
-
-    const verifyEmail = async () => {
-      try {
-        const res = await fetch(
-          `https://salonback-production.up.railway.app/api/auth/verify-email?token=${token}`
-        );
-
-        const data = await res.json();
-
-        if (res.ok) {
-          setMessage("✅ Email verificado exitosamente. Ya puedes iniciar sesión.");
-        } else {
-          setMessage(data.message || "❌ Token de verificación inválido.");
-        }
-      } catch (error) {
-        console.error(error);
-        setMessage("⚠️ Error al conectar con el servidor.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    verifyEmail();
-  }, [searchParams]);
-
+function VerifyEmailCard({ message, loading }: VerifyEmailState) {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900 text-white p-6">
       <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
-        <h1 className="text-2xl font-bold mb-6">Verificación de Email</h1>
-
+        <h1 className="text-2xl font-bold mb-6">Verificacion de Email</h1>
         {loading ? (
           <p className="text-gray-300 animate-pulse">Verificando...</p>
         ) : (
           <p className="text-gray-300">{message}</p>
         )}
-
         {!loading && message.includes("exitosamente") && (
           <a
             href="/auth/login"
@@ -62,5 +29,64 @@ export default function VerifyEmailPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function VerifyEmailContent() {
+  const searchParams = useSearchParams();
+  const [state, setState] = useState<VerifyEmailState>({
+    message: "Verificando tu correo...",
+    loading: true,
+  });
+
+  useEffect(() => {
+    const token = searchParams.get("token");
+
+    if (!token) {
+      setState({
+        message: "Token de verificacion no encontrado.",
+        loading: false,
+      });
+      return;
+    }
+
+    const verifyEmail = async () => {
+      try {
+        const response = await fetch(
+          `https://salonback-production.up.railway.app/api/auth/verify-email?token=${token}`
+        );
+
+        const data = (await response.json()) as { message?: string };
+
+        if (response.ok) {
+          setState({
+            message: "Listo. Email verificado exitosamente. Ya puedes iniciar sesion.",
+            loading: false,
+          });
+        } else {
+          setState({
+            message: data.message ?? "Token de verificacion invalido.",
+            loading: false,
+          });
+        }
+      } catch (error: unknown) {
+        setState({
+          message: getErrorMessage(error, "Error al conectar con el servidor."),
+          loading: false,
+        });
+      }
+    };
+
+    verifyEmail();
+  }, [searchParams]);
+
+  return <VerifyEmailCard {...state} />;
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailCard message="Verificando tu correo..." loading={true} />}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

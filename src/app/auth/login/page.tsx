@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { login } from "@/service/authService";
+import { getErrorMessage } from "@/utils/error";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,8 +22,8 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(data.user));
       alert(`Bienvenido ${data.user.firstName}`);
       window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "No se pudo iniciar sesión"));
     } finally {
       setLoading(false);
     }

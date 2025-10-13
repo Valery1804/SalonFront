@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createUser } from "@/service/userService";
+import { getErrorMessage } from "@/utils/error";
 
 export default function CreateUserPage() {
   const [form, setForm] = useState({
@@ -37,8 +38,8 @@ export default function CreateUserPage() {
         phone: "",
         role: "cliente",
       });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "No se pudo crear el usuario"));
     } finally {
       setLoading(false);
     }
