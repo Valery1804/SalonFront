@@ -12,6 +12,7 @@ export interface User {
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  role?: string; // Puede ser 'admin', 'cliente', 'prestador_servicio', etc.
 }
 
 export interface AuthResponse {
