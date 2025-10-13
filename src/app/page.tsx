@@ -10,7 +10,7 @@ import "swiper/css/pagination";
 
 import Image from "next/image";
 
-import { FaUser, FaCut, FaHandSparkles, FaPalette } from "react-icons/fa";
+import { FaCut, FaHandSparkles, FaPalette } from "react-icons/fa";
 
 export default function Home() {
   return (
@@ -82,16 +82,40 @@ export default function Home() {
     className="max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden"
   >
     <SwiperSlide>
-      <img src="/maquillaje.jpg" alt="Maquillaje profesional" className="w-full h-[500px] object-cover" />
+      <Image
+        src="/maquillaje.jpg"
+        alt="Maquillaje profesional"
+        width={800}
+        height={500}
+        className="w-full h-[500px] object-cover"
+      />
     </SwiperSlide>
     <SwiperSlide>
-      <img src="/estilo.jpg" alt="Peinado elegante" className="w-full h-[500px] object-cover" />
+      <Image
+        src="/estilo.jpg"
+        alt="Peinado elegante"
+        width={800}
+        height={500}
+        className="w-full h-[500px] object-cover"
+      />
     </SwiperSlide>
     <SwiperSlide>
-      <img src="/manicure.jpg" alt="Manicure" className="w-full h-[500px] object-cover" />
+      <Image
+        src="/manicure.jpg"
+        alt="Manicure"
+        width={800}
+        height={500}
+        className="w-full h-[500px] object-cover"
+      />
     </SwiperSlide>
     <SwiperSlide>
-      <img src="/barberia.jpg" alt="Barberia" className="w-full h-[500px] object-cover" />
+      <Image
+        src="/barberia.jpg"
+        alt="Barberia"
+        width={800}
+        height={500}
+        className="w-full h-[500px] object-cover"
+      />
     </SwiperSlide>
 
   </Swiper>
