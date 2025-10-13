@@ -8,6 +8,7 @@ import Modal from "./Modal";
 
 export default function Header() {
 
+  const isProvider = user?.role === "prestador_servicio";
   const { user, logout, initializing } = useAuth();
   const displayName = user?.firstName ?? user?.email ?? "";
   const [openModal, setOpenModal] = useState(false);
@@ -50,6 +51,14 @@ export default function Header() {
       </nav>
 
       <div className="flex gap-4 items-center">
+        {!initializing && isProvider && (
+          <Link
+            href="/dashboard/slots"
+            className="hidden md:flex items-center gap-2 text-sm text-gray-300 hover:text-yellow-400 transition-colors border border-white/20 px-4 py-2 rounded-full"
+          >
+            Mis Slots
+          </Link>
+        )}
         {!initializing && user ? (
           <>
             <button
