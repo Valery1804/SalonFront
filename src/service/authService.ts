@@ -8,6 +8,7 @@ export interface User {
   lastName: string;
   fullName: string;
   phone: string;
+  role: "admin" | "cliente" | "prestador_servicio";
   isActive: boolean;
   emailVerified: boolean;
   createdAt: string;
