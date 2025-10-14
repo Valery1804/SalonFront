@@ -48,8 +48,43 @@ export default function Header() {
   }, [profileOpen, mobileOpen]);
 
   const navLinks = useMemo<NavItem[]>(
-    () =>
-      [
+    () => {
+      if (isAdmin) {
+        return [
+          {
+            key: "admin-inicio",
+            label: "Inicio",
+            href: "/admin/inicio",
+            show: true,
+          },
+          {
+            key: "admin-agenda",
+            label: "Agenda de citas",
+            href: "/admin/agenda",
+            show: true,
+          },
+          {
+            key: "admin-reportes",
+            label: "Reportes",
+            href: "/admin/reportes",
+            show: true,
+          },
+          {
+            key: "admin-personal",
+            label: "Personal salón",
+            href: "/admin/personal",
+            show: true,
+          },
+          {
+            key: "admin-servicios",
+            label: "Servicios",
+            href: "/admin/servicios",
+            show: true,
+          },
+        ];
+      }
+      // Opciones normales para otros roles
+      return [
         {
           key: "home",
           label: "Inicio",
@@ -71,7 +106,7 @@ export default function Header() {
         },
         {
           key: "team",
-          label: "Personal salon",
+          label: "Personal salón",
           href: "/personal-salon",
           show: true,
         },
@@ -79,7 +114,7 @@ export default function Header() {
           key: "myAppointments",
           label: "Mis citas",
           href: "/mis-citas",
-          show: Boolean(user),
+          show: Boolean(user && user.role !== "admin"),
         },
         {
           key: "slots",
@@ -87,7 +122,8 @@ export default function Header() {
           href: "/dashboard/slots",
           show: Boolean(isProvider || isAdmin),
         },
-      ].filter((item) => item.show),
+      ].filter((item) => item.show);
+    },
     [canManageServices, isAdmin, isProvider, user],
   );
 
@@ -287,51 +323,104 @@ export default function Header() {
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                 <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Estado</dt>
                 <dd className="mt-1">
-                  {user.emailVerified ? "Email verificado" : "Verificacion pendiente"}
+                  {user.role === "admin"
+                    ? "Administrador"
+                    : user.emailVerified
+                    ? "Email verificado"
+                    : "Verificación pendiente"}
                 </dd>
               </div>
             </dl>
 
             <div className="flex flex-col gap-2 text-sm">
-              <Link
-                href="/mis-citas"
-                onClick={() => setProfileOpen(false)}
-                className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
-              >
-                Mis citas
-              </Link>
-              <Link
-                href="/reservar"
-                onClick={() => setProfileOpen(false)}
-                className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
-              >
-                Reservar nueva cita
-              </Link>
-              {canManageServices && (
-                <Link
-                  href="/services/create_service"
-                  onClick={() => setProfileOpen(false)}
-                  className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
-                >
-                  Gestionar servicios
-                </Link>
+              {user.role === "admin" ? (
+                <>
+                  <Link
+                    href="/admin/inicio"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                  >
+                    Inicio
+                  </Link>
+                  <Link
+                    href="/admin/agenda"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                  >
+                    Agenda de citas
+                  </Link>
+                  <Link
+                    href="/admin/reportes"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                  >
+                    Reportes
+                  </Link>
+                  <Link
+                    href="/admin/personal"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                  >
+                    Personal salón
+                  </Link>
+                  <Link
+                    href="/admin/servicios"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                  >
+                    Servicios
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-red-400/50 px-5 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
+                  >
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/mis-citas"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                  >
+                    Mis citas
+                  </Link>
+                  <Link
+                    href="/reservar"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
+                  >
+                    Reservar nueva cita
+                  </Link>
+                  {canManageServices && (
+                    <Link
+                      href="/services/create_service"
+                      onClick={() => setProfileOpen(false)}
+                      className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                    >
+                      Gestionar servicios
+                    </Link>
+                  )}
+                  {(isProvider || isAdmin) && (
+                    <Link
+                      href="/dashboard/slots"
+                      onClick={() => setProfileOpen(false)}
+                      className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                    >
+                      Panel de agenda
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-red-400/50 px-5 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
+                  >
+                    Cerrar sesión
+                  </button>
+                </>
               )}
-              {(isProvider || isAdmin) && (
-                <Link
-                  href="/dashboard/slots"
-                  onClick={() => setProfileOpen(false)}
-                  className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
-                >
-                  Panel de agenda
-                </Link>
-              )}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex w-full items-center justify-center rounded-full border border-red-400/50 px-5 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
-              >
-                Cerrar sesion
-              </button>
             </div>
           </div>
         )}
