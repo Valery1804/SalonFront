@@ -61,7 +61,7 @@ export default function Login() {
         </form>
 
         <div className="flex justify-between text-sm text-purple-800 mt-4">
-          <Link href="/recuperar-password" className="hover:underline">
+          <Link href="/auth/forgot-password" className="hover:underline">
             Olvidaste tu contrasena?
           </Link>
           <Link href="/auth/register" className="hover:underline font-semibold">

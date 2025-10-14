@@ -3,9 +3,19 @@
 import { useState } from "react";
 import { createUser } from "@/service/userService";
 import { getErrorMessage } from "@/utils/error";
+import type { UserRole } from "@/types/user";
+
+interface CreateUserForm {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: UserRole;
+}
 
 export default function CreateUserPage() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<CreateUserForm>({
     email: "",
     password: "",
     firstName: "",
@@ -17,8 +27,12 @@ export default function CreateUserPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "role" ? (value as UserRole) : value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

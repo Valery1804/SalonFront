@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
@@ -9,10 +9,11 @@ import {
   type ServiceSlot,
   type ServiceSlotStatus,
 } from "@/service/serviceSlotService";
+import { getAllServices, type ServiceResponse } from "@/service/serviceService";
 import {
-  getAllServices,
-  type ServiceResponse,
-} from "@/service/serviceService";
+  getStaffAppointments,
+  type Appointment,
+} from "@/service/appointmentService";
 import { getErrorMessage } from "@/utils/error";
 
 const STATUS_LABEL: Record<ServiceSlotStatus, string> = {
@@ -27,8 +28,9 @@ const EDITABLE_STATUSES: ServiceSlotStatus[] = ["available", "blocked", "cancell
 
 export default function ServiceSlotsDashboard() {
   const { user, initializing } = useAuth();
+  const today = new Date().toISOString().split("T")[0];
   const [services, setServices] = useState<ServiceResponse[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(today);
   const [slots, setSlots] = useState<ServiceSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -37,21 +39,47 @@ export default function ServiceSlotsDashboard() {
   const [generating, setGenerating] = useState(false);
   const [form, setForm] = useState({
     serviceId: "",
-    date: "",
+    date: today,
     startTime: "",
     endTime: "",
     durationMinutes: "",
   });
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+
+  const upcomingAppointments = useMemo(() => {
+    const nowTs = Date.now();
+    return appointments
+      .filter((appointment) => {
+        const dateTs = new Date(`${appointment.date}T${appointment.startTime}`).getTime();
+        return (
+          (appointment.status === "pendiente" || appointment.status === "confirmada") &&
+          dateTs >= nowTs
+        );
+      })
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.startTime}`).getTime();
+        const dateB = new Date(`${b.date}T${b.startTime}`).getTime();
+        return dateA - dateB;
+      })
+      .slice(0, 6);
+  }, [appointments]);
 
   const isProvider = user?.role === "prestador_servicio";
 
   useEffect(() => {
-    if (!isProvider) return;
+    if (!isProvider || !user) return;
     const loadServices = async () => {
       setLoadingServices(true);
       try {
         const data = await getAllServices();
-        setServices(data);
+        const ownedServices = data.filter((service) => service.providerId === user.id);
+        setServices(ownedServices);
+        setForm((prev) => ({
+          ...prev,
+          serviceId: ownedServices[0]?.id ?? "",
+        }));
       } catch (err) {
         setError(getErrorMessage(err, "No se pudieron cargar los servicios"));
       } finally {
@@ -59,7 +87,7 @@ export default function ServiceSlotsDashboard() {
       }
     };
     void loadServices();
-  }, [isProvider]);
+  }, [isProvider, user]);
 
   const loadSlots = useMemo(
     () => async (date?: string) => {
@@ -82,6 +110,23 @@ export default function ServiceSlotsDashboard() {
     if (!isProvider) return;
     void loadSlots();
   }, [isProvider, loadSlots]);
+
+  useEffect(() => {
+    if (!isProvider || !user) return;
+    const loadAppointments = async () => {
+      setLoadingAppointments(true);
+      setAppointmentsError(null);
+      try {
+        const data = await getStaffAppointments(user.id);
+        setAppointments(data);
+      } catch (err) {
+        setAppointmentsError(getErrorMessage(err, "No se pudieron cargar tus citas"));
+      } finally {
+        setLoadingAppointments(false);
+      }
+    };
+    void loadAppointments();
+  }, [isProvider, user]);
 
   const handleFormChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -172,7 +217,7 @@ export default function ServiceSlotsDashboard() {
       <section className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-4">Acceso restringido</h1>
         <p className="text-gray-300">
-          Esta sección está disponible únicamente para prestadores de servicio.
+          Esta seccion esta disponible unicamente para prestadores de servicio.
         </p>
       </section>
     );
@@ -181,7 +226,7 @@ export default function ServiceSlotsDashboard() {
   return (
     <section className="max-w-6xl mx-auto p-6 space-y-8">
       <header>
-        <h1 className="text-3xl font-bold mb-2">Gestión de Slots</h1>
+        <h1 className="text-3xl font-bold mb-2">Gestion de Slots</h1>
         <p className="text-gray-300">
           Genera tu agenda diaria y administra la disponibilidad de cada slot.
         </p>
@@ -214,7 +259,7 @@ export default function ServiceSlotsDashboard() {
               <option value="">Selecciona un servicio</option>
               {services.map((service) => (
                 <option key={service.id} value={service.id}>
-                  {service.name} • {service.durationMinutes} min
+                  {service.name} - {service.durationMinutes} min
                 </option>
               ))}
             </select>
@@ -258,7 +303,7 @@ export default function ServiceSlotsDashboard() {
 
           <label className="flex flex-col gap-2 md:col-span-2">
             <span className="text-sm text-gray-300">
-              Duración por slot (opcional, en minutos)
+              Duracion por slot (opcional, en minutos)
             </span>
             <input
               type="number"
@@ -266,7 +311,7 @@ export default function ServiceSlotsDashboard() {
               min={5}
               value={form.durationMinutes}
               onChange={handleFormChange}
-              placeholder="Se usará la duración del servicio si lo dejas vacío"
+              placeholder="Se usara la Duracion del servicio si lo dejas vacio"
               className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
             />
           </label>
@@ -323,7 +368,7 @@ export default function ServiceSlotsDashboard() {
         {loadingSlots ? (
           <p className="text-gray-300">Cargando slots...</p>
         ) : slots.length === 0 ? (
-          <p className="text-gray-400">Aún no tienes slots generados.</p>
+          <p className="text-gray-400">Aun no tienes slots generados.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/10">
@@ -333,7 +378,7 @@ export default function ServiceSlotsDashboard() {
                   <th className="px-4 py-3">Horario</th>
                   <th className="px-4 py-3">Servicio</th>
                   <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Acción</th>
+                  <th className="px-4 py-3">Accion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm">
@@ -377,6 +422,60 @@ export default function ServiceSlotsDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4 rounded-lg border border-white/10 bg-slate-800/60 p-6 shadow-lg">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Proximas citas confirmadas</h2>
+            <p className="text-sm text-gray-400">
+              Visualiza las reservas pendientes para prepararte con tiempo.
+            </p>
+          </div>
+        </div>
+
+        {loadingAppointments ? (
+          <p className="text-gray-300">Cargando citas...</p>
+        ) : appointmentsError ? (
+          <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {appointmentsError}
+          </p>
+        ) : upcomingAppointments.length === 0 ? (
+          <p className="text-gray-400">No tienes citas proximas.</p>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {upcomingAppointments.map((appointment) => (
+              <article
+                key={appointment.id}
+                className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-gray-200"
+              >
+                <header className="flex items-center justify-between gap-4">
+                  <h3 className="text-base font-semibold text-white">
+                    {appointment.service?.name ?? "Servicio"}
+                  </h3>
+                  <span className="rounded-full border border-yellow-400/40 px-3 py-1 text-xs font-semibold text-yellow-200">
+                    {appointment.startTime.slice(0, 5)} hs
+                  </span>
+                </header>
+                <p className="mt-2 text-xs uppercase tracking-wider text-gray-400">
+                  {new Date(`${appointment.date}T${appointment.startTime}`).toLocaleString("es-ES", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "short",
+                  })}
+                </p>
+                <p className="mt-2 text-xs text-gray-300">
+                  Cliente: {appointment.client?.fullName ?? appointment.client?.email ?? "N/A"}
+                </p>
+                {appointment.notes && (
+                  <p className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
+                    Nota: {appointment.notes}
+                  </p>
+                )}
+              </article>
+            ))}
           </div>
         )}
       </section>

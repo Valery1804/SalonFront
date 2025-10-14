@@ -1,20 +1,7 @@
 import api from "./api";
 import { getAxiosError } from "@/utils/error";
-
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  phone: string;
-  role: "admin" | "cliente" | "prestador_servicio";
-  isActive: boolean;
-  emailVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-  role?: string; // Puede ser 'admin', 'cliente', 'prestador_servicio', etc.
-}
+import type { User } from "@/types/user";
+export type { User, UserRole, ProviderType } from "@/types/user";
 
 export interface AuthResponse {
   accessToken: string;
@@ -74,6 +61,20 @@ export async function resendVerification(): Promise<string> {
     if (status === 404) throw new Error("Usuario no encontrado");
 
     throw new Error("Error al reenviar el correo de verificacion");
+  }
+}
+
+export async function requestPasswordReset(email: string): Promise<string> {
+  try {
+    const { data } = await api.post<{ message: string }>("/auth/forgot-password", { email });
+    return data.message;
+  } catch (error: unknown) {
+    const axiosError = getAxiosError(error);
+    const status = axiosError?.response?.status;
+
+    if (status === 404) throw new Error("No encontramos un usuario con ese correo");
+
+    throw new Error("No pudimos procesar la solicitud");
   }
 }
 
