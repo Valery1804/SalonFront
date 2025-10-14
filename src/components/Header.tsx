@@ -49,8 +49,43 @@ export default function Header() {
   }, [profileOpen, mobileOpen]);
 
   const navLinks = useMemo<NavItem[]>(
-    () =>
-      [
+    () => {
+      if (isAdmin) {
+        return [
+          {
+            key: "admin-inicio",
+            label: "Inicio",
+            href: "/admin/inicio",
+            show: true,
+          },
+          {
+            key: "admin-agenda",
+            label: "Agenda de citas",
+            href: "/admin/agenda",
+            show: true,
+          },
+          {
+            key: "admin-reportes",
+            label: "Reportes",
+            href: "/admin/reportes",
+            show: true,
+          },
+          {
+            key: "admin-personal",
+            label: "Personal salón",
+            href: "/admin/personal",
+            show: true,
+          },
+          {
+            key: "admin-servicios",
+            label: "Servicios",
+            href: "/admin/servicios",
+            show: true,
+          },
+        ];
+      }
+      // Opciones normales para otros roles
+      return [
         {
           key: "home",
           label: "Inicio",
@@ -72,7 +107,7 @@ export default function Header() {
         },
         {
           key: "team",
-          label: "Personal salon",
+          label: "Personal salón",
           href: "/personal-salon",
           show: true,
         },
@@ -80,7 +115,7 @@ export default function Header() {
           key: "myAppointments",
           label: "Mis citas",
           href: "/mis-citas",
-          show: Boolean(user),
+          show: Boolean(user && user.role !== "admin"),
         },
         {
           key: "slots",
@@ -88,7 +123,8 @@ export default function Header() {
           href: "/dashboard/slots",
           show: Boolean(isProvider || isAdmin),
         },
-      ].filter((item) => item.show),
+      ].filter((item) => item.show);
+    },
     [canManageServices, isAdmin, isProvider, user],
   );
 

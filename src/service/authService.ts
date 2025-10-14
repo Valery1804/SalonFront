@@ -37,7 +37,8 @@ export interface RegisterPayload {
 
 export async function register(dataUser: RegisterPayload): Promise<AuthResponse> {
   try {
-    const { data } = await api.post<AuthResponse>("/auth/register", dataUser);
+    // Forzar rol cliente en el registro normal
+    const { data } = await api.post<AuthResponse>("/auth/register", { ...dataUser, role: "cliente" });
     return data;
   } catch (error: unknown) {
     const axiosError = getAxiosError(error);

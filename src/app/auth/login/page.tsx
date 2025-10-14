@@ -19,7 +19,11 @@ export default function Login() {
     try {
       const data = await loginUser(email, password);
       alert(`Bienvenido ${data.user.firstName}`);
-      window.location.href = "/";
+      if (data.user.role === "admin") {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/";
+      }
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError, "No se pudo iniciar sesion"));
     }
