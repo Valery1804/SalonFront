@@ -18,6 +18,8 @@ export interface ServiceResponse {
   durationMinutes: number;
   isActive: boolean;
   providerId: string | null;
+  averageRating: number;
+  reviewsCount: number;
   createdAt: string;
   updatedAt: string;
   provider?: User | null;

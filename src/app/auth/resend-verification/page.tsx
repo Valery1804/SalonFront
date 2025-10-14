@@ -1,84 +1,94 @@
 "use client";
 
 import { useState } from "react";
+import AuthLayout from "@/components/auth/AuthLayout";
 
 export default function ResendVerificationPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const inputClass =
+    "w-full rounded-xl border border-white/15 bg-slate-900/70 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60";
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setMessage("");
+    setError("");
     setLoading(true);
 
     try {
-      const res = await fetch(
+      const response = await fetch(
         "https://salonback-production.up.railway.app/api/auth/resend-verification",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),
-        }
+        },
       );
 
-      const data = await res.json();
+      const data = (await response.json()) as { message?: string };
 
-      if (res.ok) {
-        setMessage("✅ Email de verificación reenviado correctamente.");
+      if (response.ok) {
+        setMessage("Listo. Te enviamos un nuevo correo de verificacion.");
         setEmail("");
+      } else if (response.status === 400) {
+        setError(data.message ?? "Este correo ya fue verificado.");
+      } else if (response.status === 404) {
+        setError(data.message ?? "No encontramos una cuenta con ese correo.");
       } else {
-        // Muestra mensaje del backend o un texto por defecto
-        setMessage(
-          data.message ||
-            (res.status === 400
-              ? "⚠️ El email ya fue verificado."
-              : res.status === 404
-              ? "❌ Usuario no encontrado."
-              : "❌ Error al reenviar el email.")
-        );
+        setError(data.message ?? "No pudimos reenviar el correo de verificacion.");
       }
-    } catch (error) {
-      console.error(error);
-      setMessage("⚠️ Error al conectar con el servidor.");
+    } catch (caughtError) {
+      setError("No fue posible conectar con el servidor. Intentalo mas tarde.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900 text-white p-6">
-      <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Reenviar Verificación</h1>
+    <AuthLayout
+      heroTitle="Reenviar correo de verificacion"
+      heroSubtitle="Confirma tu cuenta para aprovechar todas las funciones."
+      heroDescription="Ingresa el correo con el que te registraste y te enviaremos un nuevo enlace de activacion."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-medium text-gray-200">
+            Correo electronico
+          </label>
+          <input
+            id="email"
+            type="email"
+            placeholder="correo@ejemplo.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            className={inputClass}
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block mb-1 text-sm">Correo Electrónico</label>
-            <input
-              type="email"
-              placeholder="Ingresa tu correo registrado"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full p-2 rounded bg-slate-800 border border-slate-700 text-white"
-            />
-          </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/40 transition hover:shadow-pink-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Enviando..." : "Reenviar correo"}
+        </button>
+      </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition"
-          >
-            {loading ? "Enviando..." : "Reenviar Email"}
-          </button>
-        </form>
+      {message ? (
+        <p className="mt-4 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+          {message}
+        </p>
+      ) : null}
 
-        {message && (
-          <p className="mt-4 text-center text-sm text-gray-300">{message}</p>
-        )}
-      </div>
-    </main>
+      {error ? (
+        <p className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {error}
+        </p>
+      ) : null}
+    </AuthLayout>
   );
 }
