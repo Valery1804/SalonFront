@@ -1,138 +1,341 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { FaUser } from "react-icons/fa";
-import { useAuth } from "@/providers/AuthProvider";
-import { useState } from "react";
+import { FiMenu, FiX } from "react-icons/fi";
 import Modal from "./Modal";
+import { useAuth } from "@/providers/AuthProvider";
+import type { ProviderType, UserRole } from "@/types/user";
+
+const ROLE_LABEL: Record<UserRole, string> = {
+  admin: "Administrador",
+  cliente: "Cliente",
+  prestador_servicio: "Prestador de servicio",
+};
+
+const PROVIDER_LABEL: Record<ProviderType, string> = {
+  barbero: "Barbero",
+  estilista: "Estilista",
+  manicurista: "Manicurista",
+  maquilladora: "Maquilladora",
+};
+
+interface NavItem {
+  key: string;
+  label: string;
+  href: string;
+  highlight?: boolean;
+  show: boolean;
+}
 
 export default function Header() {
-
-  const isProvider = user?.role === "prestador_servicio";
   const { user, logout, initializing } = useAuth();
-  const displayName = user?.firstName ?? user?.email ?? "";
-  const [openModal, setOpenModal] = useState(false);
+  const pathname = usePathname();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleProfileClick = () => {
-    setOpenModal(true);
+  const isAdmin = user?.role === "admin";
+  const isProvider = user?.role === "prestador_servicio";
+  const canManageServices = Boolean(user && (isAdmin || isProvider));
+
+  useEffect(() => {
+    document.body.style.overflow = profileOpen || mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [profileOpen, mobileOpen]);
+
+  const navLinks = useMemo<NavItem[]>(
+    () =>
+      [
+        {
+          key: "home",
+          label: "Inicio",
+          href: "/",
+          show: true,
+        },
+        {
+          key: "services",
+          label: canManageServices ? "Gestionar servicios" : "Servicios",
+          href: canManageServices ? "/services/create_service" : "/#servicios",
+          show: true,
+        },
+        {
+          key: "book",
+          label: "Reservar",
+          href: "/reservar",
+          highlight: true,
+          show: true,
+        },
+        {
+          key: "team",
+          label: "Personal salon",
+          href: "/personal-salon",
+          show: true,
+        },
+        {
+          key: "myAppointments",
+          label: "Mis citas",
+          href: "/mis-citas",
+          show: Boolean(user),
+        },
+        {
+          key: "slots",
+          label: isAdmin ? "Agenda general" : "Mis slots",
+          href: "/dashboard/slots",
+          show: Boolean(isProvider || isAdmin),
+        },
+      ].filter((item) => item.show),
+    [canManageServices, isAdmin, isProvider, user],
+  );
+
+  const displayName =
+    user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.firstName || user?.email || "";
+
+  const isActive = (href: string) => {
+    if (href === "/") {
+      return pathname === "/";
+    }
+    if (href.includes("#")) {
+      const [base] = href.split("#");
+      return base === pathname;
+    }
+    return pathname === href;
   };
 
   const handleLogout = () => {
     logout();
+    setProfileOpen(false);
+    setMobileOpen(false);
     window.location.href = "/";
   };
 
+  const renderNavLink = (link: NavItem, variant: "desktop" | "mobile") => {
+    const active = isActive(link.href);
+    if (variant === "desktop") {
+      return (
+        <Link
+          key={link.key}
+          href={link.href}
+          onClick={() => setMobileOpen(false)}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            link.highlight
+              ? "bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50"
+              : "text-gray-300 hover:text-yellow-300"
+          } ${active && !link.highlight ? "text-white" : ""}`}
+        >
+          {link.label}
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        key={link.key}
+        href={link.href}
+        onClick={() => setMobileOpen(false)}
+        className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
+          link.highlight
+            ? "bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg shadow-pink-500/30"
+            : "border border-white/10 text-gray-200 hover:bg-white/10"
+        } ${active && !link.highlight ? "border-pink-400/50 text-white" : ""}`}
+      >
+        {link.label}
+      </Link>
+    );
+  };
+
   return (
-    <header className="flex justify-between items-center px-8 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-xl fixed top-0 left-0 w-full z-50 border-b border-slate-700">
-      <div className="flex items-center gap-3">
-        <h1 className="text-3xl font-bold">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-400">Salon</span>
+    <header className="fixed left-0 top-0 z-50 w-full border-b border-slate-800/80 bg-slate-900/80 px-5 py-4 backdrop-blur-xl sm:px-8">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <Link
+          href="/"
+          className="flex items-center gap-3 text-2xl font-bold text-white md:text-3xl"
+        >
+          <span className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-transparent">
+            Salon
+          </span>
           <span className="text-yellow-400">Click</span>
-        </h1>
-        <p className="text-xs text-gray-400 uppercase tracking-wider">Beauty & Style</p>
+        </Link>
+
+        <nav className="hidden items-center gap-2 text-sm lg:flex xl:gap-3">
+          {navLinks.map((link) => renderNavLink(link, "desktop"))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          {initializing ? (
+            <div className="h-10 w-24 animate-pulse rounded-full bg-white/10" />
+          ) : user ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-pink-400/60 hover:text-pink-200"
+              >
+                <FaUser className="text-xs" />
+                <span>{user.firstName ?? "Perfil"}</span>
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition hover:border-white/30 lg:hidden"
+                onClick={() => setMobileOpen((prev) => !prev)}
+              >
+                {mobileOpen ? <FiX className="text-xl" /> : <FiMenu className="text-xl" />}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+              >
+                Iniciar sesion
+              </Link>
+              <Link
+                href="/auth/register"
+                className="hidden items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50 sm:inline-flex"
+              >
+                Registrarse
+              </Link>
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition hover:border-white/30 lg:hidden"
+                onClick={() => setMobileOpen((prev) => !prev)}
+              >
+                {mobileOpen ? <FiX className="text-xl" /> : <FiMenu className="text-xl" />}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <nav className="hidden md:flex gap-8 text-sm">
-        <Link href="#inicio" className="text-white font-medium hover:text-yellow-400 transition-colors border-b-2 border-yellow-400 pb-1">
-          Inicio
-        </Link>
-        {/* Solo mostrar Servicios si el usuario es admin o prestador_servicio */}
-        {user && (user.role === "admin" || user.role === "prestador_servicio") && (
-          <Link href="#servicios" className="text-gray-300 hover:text-yellow-400 transition-colors">
-            Servicios
-          </Link>
-        )}
-        <Link href="/mis-citas" className="text-gray-300 hover:text-yellow-400 transition-colors">
-          Mis citas
-        </Link>
-        <Link href="/personal-salon" className="text-gray-300 hover:text-yellow-400 transition-colors">
-          Personal Salón
-        </Link>
-      </nav>
-
-      <div className="flex gap-4 items-center">
-        {!initializing && isProvider && (
-          <Link
-            href="/dashboard/slots"
-            className="hidden md:flex items-center gap-2 text-sm text-gray-300 hover:text-yellow-400 transition-colors border border-white/20 px-4 py-2 rounded-full"
-          >
-            Mis Slots
-          </Link>
-        )}
-        {!initializing && user ? (
-          <>
-            <button
-              type="button"
-              onClick={handleProfileClick}
-              className="flex items-center gap-2 text-white border border-white/30 px-4 py-2 rounded-full hover:text-yellow-400 transition-colors"
-              title="Ver perfil"
-            >
-              <FaUser className="text-sm" />
-              <span className="text-sm underline cursor-pointer">{displayName}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-sm text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full"
-            >
-              Cerrar Sesion
-            </button>
-            <Modal open={openModal} onClose={() => setOpenModal(false)}>
-              <div className="bg-gradient-to-br from-pink-500 via-orange-400 to-yellow-400 rounded-xl p-1 shadow-lg">
-                <div className="bg-white rounded-lg p-6 min-w-[320px] max-w-[90vw] relative">
-                  <h2 className="text-2xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-400 text-center">Perfil de Usuario</h2>
-                  <div className="flex flex-col items-center gap-2 mb-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 flex items-center justify-center text-white text-3xl font-bold shadow-md">
-                      <FaUser />
-                    </div>
-                    <div className="text-lg font-bold text-gray-800">{user.firstName} {user.lastName}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </div>
-                  <div className="space-y-2 text-base">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-pink-500">Teléfono:</span>
-                      <span className="text-gray-700">{user.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-orange-500">Rol:</span>
-                      <span className="text-gray-700 capitalize">{user.role ?? "No definido"}</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-center">
-                    {user.role === "admin" && (
-                      <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold shadow">Administrador</span>
-                    )}
-                    {user.role === "cliente" && (
-                      <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold shadow">Cliente</span>
-                    )}
-                    {user.role === "prestador_servicio" && (
-                      <span className="inline-block bg-pink-100 text-pink-700 px-3 py-1 rounded-full font-semibold shadow">Prestador de Servicio</span>
-                    )}
-                  </div>
-                  <div className="mt-6 flex flex-col gap-2">
-                    {/* Opciones de acceso según el rol */}
-                    {(user.role === "admin" || user.role === "prestador_servicio") && (
-                      <Link href="/services/create_service" className="block w-full text-center bg-gradient-to-r from-pink-500 to-orange-400 text-white font-semibold py-2 rounded-lg shadow hover:scale-105 transition-all">Servicios</Link>
-                    )}
-                    <Link href="/reservar" className="block w-full text-center bg-yellow-400 text-slate-900 font-semibold py-2 rounded-lg shadow hover:scale-105 transition-all">Agendar Cita</Link>
-                  </div>
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="fixed inset-x-4 top-24 z-50 lg:hidden">
+            <div className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl">
+              <nav className="flex flex-col gap-3">
+                {navLinks.map((link) => renderNavLink(link, "mobile"))}
+              </nav>
+              {user ? (
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(true);
+                      setMobileOpen(false);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-pink-400/60"
+                  >
+                    <FaUser className="text-xs" />
+                    Ver perfil
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex items-center justify-center rounded-full border border-red-400/50 px-4 py-2 text-sm font-medium text-red-200 transition hover:border-red-300 hover:text-red-100"
+                  >
+                    Cerrar sesion
+                  </button>
                 </div>
+              ) : (
+                <div className="flex flex-col gap-2 text-sm text-white">
+                  <Link
+                    href="/auth/register"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
+                  >
+                    Crear cuenta
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      <Modal open={profileOpen} onClose={() => setProfileOpen(false)}>
+        {user && (
+          <div className="space-y-5 text-white">
+            <header>
+              <p className="text-xs uppercase tracking-[0.4em] text-pink-300">Perfil</p>
+              <h2 className="mt-1 text-2xl font-semibold">{displayName}</h2>
+              <p className="text-sm text-gray-300">
+                {ROLE_LABEL[user.role]}
+                {user.providerType ? ` - ${PROVIDER_LABEL[user.providerType]}` : ""}
+              </p>
+            </header>
+
+            <dl className="grid gap-3 text-sm text-gray-200">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Correo</dt>
+                <dd className="mt-1">{user.email}</dd>
               </div>
-            </Modal>
-          </>
-        ) : (
-          <Link
-            href="/auth/login"
-            className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors border border-white/30 px-4 py-2 rounded-full"
-          >
-            <FaUser className="text-sm" />
-            <span className="text-sm">Iniciar Sesion</span>
-          </Link>
+              {user.phone && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Telefono</dt>
+                  <dd className="mt-1">{user.phone}</dd>
+                </div>
+              )}
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Estado</dt>
+                <dd className="mt-1">
+                  {user.emailVerified ? "Email verificado" : "Verificacion pendiente"}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="flex flex-col gap-2 text-sm">
+              <Link
+                href="/mis-citas"
+                onClick={() => setProfileOpen(false)}
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+              >
+                Mis citas
+              </Link>
+              <Link
+                href="/reservar"
+                onClick={() => setProfileOpen(false)}
+                className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
+              >
+                Reservar nueva cita
+              </Link>
+              {canManageServices && (
+                <Link
+                  href="/services/create_service"
+                  onClick={() => setProfileOpen(false)}
+                  className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                >
+                  Gestionar servicios
+                </Link>
+              )}
+              {(isProvider || isAdmin) && (
+                <Link
+                  href="/dashboard/slots"
+                  onClick={() => setProfileOpen(false)}
+                  className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+                >
+                  Panel de agenda
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex w-full items-center justify-center rounded-full border border-red-400/50 px-5 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
+              >
+                Cerrar sesion
+              </button>
+            </div>
+          </div>
         )}
-        <Link href="/reservar" className="bg-gradient-to-r from-pink-500 to-orange-400 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-pink-500/50 transition-all font-medium text-sm">
-          Agendar Cita
-        </Link>
-      </div>
+      </Modal>
     </header>
   );
 }

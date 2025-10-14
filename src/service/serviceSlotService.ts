@@ -1,6 +1,7 @@
 import api from "./api";
 import { getAxiosError } from "@/utils/error";
 import type { ServiceResponse } from "./serviceService";
+import type { User } from "@/types/user";
 
 export type ServiceSlotStatus =
   | "available"
@@ -11,7 +12,6 @@ export type ServiceSlotStatus =
 
 export interface ServiceSlot {
   id: string;
-  providerId: string;
   serviceId: string;
   date: string;
   startTime: string;
@@ -21,19 +21,8 @@ export interface ServiceSlot {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  provider?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  client?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  } | null;
-  service?: ServiceResponse;
+  service?: (ServiceResponse & { provider?: User | null }) | null;
+  client?: User | null;
 }
 
 export interface GenerateSlotsPayload {
@@ -72,7 +61,7 @@ export async function getMyServiceSlots(date?: string): Promise<ServiceSlot[]> {
       params: date ? { date } : undefined,
     });
     return data;
-  } catch (error: unknown) {
+  } catch {
     throw new Error("No se pudieron cargar tus slots");
   }
 }
@@ -80,6 +69,7 @@ export async function getMyServiceSlots(date?: string): Promise<ServiceSlot[]> {
 export interface UpdateSlotStatusPayload {
   status: ServiceSlotStatus;
   notes?: string;
+  clientId?: string;
 }
 
 export async function updateServiceSlotStatus(

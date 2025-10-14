@@ -1,6 +1,6 @@
-import type { AxiosError } from "axios";
+﻿import type { AxiosError } from "axios";
 
-export function getErrorMessage(error: unknown, fallback = "Ocurrió un error inesperado"): string {
+export function getErrorMessage(error: unknown, fallback = "OcurriÃ³ un error inesperado"): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }

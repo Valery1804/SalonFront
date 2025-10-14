@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { requestPasswordReset } from "@/service/authService";
 import { getErrorMessage } from "@/utils/error";
 
 export default function ForgotPassword() {
@@ -9,95 +11,68 @@ export default function ForgotPassword() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError("");
+    setMessage("");
+    setLoading(true);
 
     try {
-      const res = await fetch(
-        "https://salonback-production.up.railway.app/api/auth/forgot-password",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Error al solicitar recuperación");
-      }
-
-      setMessage("✅ Se ha enviado un correo para restablecer tu contraseña.");
-    } catch (error: unknown) {
-      setError(getErrorMessage(error, "Error al solicitar recuperación"));
+      const response = await requestPasswordReset(email);
+      setMessage(response || "Te enviamos un correo con las instrucciones para restablecer tu contrasena.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "No pudimos solicitar el cambio de contrasena"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900 text-white px-6">
-      <div className="bg-slate-900/60 p-10 rounded-2xl shadow-2xl max-w-md w-full border border-purple-700/20">
-        <h1 className="text-3xl font-bold text-center mb-6">
-          Recuperar Contraseña 🔑
-        </h1>
-        <p className="text-gray-300 text-center mb-8">
-          Ingresa tu correo electrónico y te enviaremos un enlace para
-          restablecer tu contraseña.
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900 px-4 py-12 text-white">
+      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/80 p-8 shadow-2xl backdrop-blur">
+        <h1 className="text-2xl font-semibold text-white">Recuperar contrasena</h1>
+        <p className="mt-2 text-sm text-gray-300">
+          Ingresa tu correo electronico y te enviaremos un enlace para restablecer tu contrasena.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block mb-2 font-semibold">
-              Correo electrónico
-            </label>
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <label className="block text-sm text-gray-200">
+            Correo electronico
             <input
-              id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               required
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white border border-purple-500/20 focus:outline-none focus:ring-2 focus:ring-pink-500"
-              placeholder="usuario@ejemplo.com"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60"
+              placeholder="usuario@correo.com"
             />
-          </div>
+          </label>
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 rounded-lg font-semibold text-lg transition-all ${
-              loading
-                ? "bg-slate-600 cursor-not-allowed"
-                : "bg-gradient-to-r from-pink-500 to-orange-400 hover:scale-105"
-            }`}
+            className="w-full rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-pink-500/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Enviando..." : "Enviar enlace"}
+            {loading ? "Enviando..." : "Enviar instrucciones"}
           </button>
         </form>
 
         {message && (
-          <p className="mt-6 text-green-400 text-center font-medium">
+          <p className="mt-4 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
             {message}
           </p>
         )}
 
         {error && (
-          <p className="mt-6 text-red-400 text-center font-medium">{error}</p>
+          <p className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </p>
         )}
 
-        <div className="mt-10 text-center">
-          <a
-            href="/auth/login"
-            className="text-pink-400 hover:text-orange-300 font-semibold"
-          >
-            ← Volver al inicio de sesión
-          </a>
+        <div className="mt-6 text-center text-sm">
+          <Link href="/auth/login" className="text-pink-300 hover:text-orange-300">
+            Volver al inicio de sesion
+          </Link>
         </div>
       </div>
     </main>

@@ -1,28 +1,39 @@
 import api from "./api";
-import { User } from "./authService";
 import { getAxiosError } from "@/utils/error";
+import type { ProviderType, User, UserRole } from "@/types/user";
 
 export interface CreateUserDTO {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-  phone: string;
-  role: string;
+  phone?: string;
+  role?: UserRole;
+  providerType?: ProviderType;
 }
 
-export interface UserResponse {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  phone: string;
-  isActive: boolean;
-  emailVerified: boolean;
-  role: string;
-  createdAt: string;
-  updatedAt: string;
+export type UserResponse = User;
+
+export interface UpdateUserDTO {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  role?: UserRole;
+  providerType?: ProviderType | null;
+  isActive?: boolean;
+  emailVerificationToken?: string;
+}
+
+export interface UpdateProfileDTO {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  role?: UserRole;
+  providerType?: ProviderType | null;
+  isActive?: boolean;
+  emailVerificationToken?: string;
 }
 
 export async function createUser(userData: CreateUserDTO): Promise<UserResponse> {
@@ -52,16 +63,6 @@ export async function getAllUsers(): Promise<User[]> {
 
     throw new Error("Error al obtener los usuarios");
   }
-}
-
-export interface UpdateUserDTO {
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  role?: "cliente" | "admin";
-  isActive?: boolean;
-  emailVerificationToken?: string;
 }
 
 export async function getUserById(id: string): Promise<UserResponse> {
@@ -118,16 +119,6 @@ export async function getMyProfile(): Promise<UserResponse> {
 
     throw new Error("Error al obtener el perfil del usuario");
   }
-}
-
-export interface UpdateProfileDTO {
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  role?: "cliente" | "admin";
-  isActive?: boolean;
-  emailVerificationToken?: string;
 }
 
 export async function updateMyProfile(profileData: UpdateProfileDTO): Promise<UserResponse> {

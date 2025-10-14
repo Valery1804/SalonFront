@@ -63,94 +63,151 @@ export default function CreateServicePage() {
 
   if (initializing) {
     return (
-      <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded mt-10">
-        <p className="text-gray-700">Cargando...</p>
-      </div>
+      <section className="flex min-h-[60vh] items-center justify-center bg-slate-900">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-8 py-6 text-sm text-gray-300 shadow-lg">
+          Cargando panel de servicios...
+        </div>
+      </section>
     );
   }
 
   if (!isProvider) {
     return (
-      <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded mt-10">
-        <h1 className="text-2xl font-bold mb-4 text-gray-900">Acceso restringido</h1>
-        <p className="text-gray-600">
-          Solo los usuarios con rol de prestador de servicio pueden crear servicios.
-        </p>
-      </div>
+      <section className="flex min-h-[60vh] items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6">
+        <div className="max-w-lg rounded-3xl border border-red-500/30 bg-red-500/10 p-8 text-center shadow-2xl backdrop-blur">
+          <h1 className="text-2xl font-semibold text-white">Acceso restringido</h1>
+          <p className="mt-3 text-sm text-red-100">
+            Necesitas un rol de <span className="font-semibold">prestador de servicio</span> para
+            crear y administrar servicios. Si crees que es un error, contacta al administrador.
+          </p>
+        </div>
+      </section>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded mt-10 space-y-4">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Crear Servicio</h1>
-        <p className="text-gray-600 text-sm">
-          Registra un nuevo servicio para ofrecerlo en tu agenda.
-        </p>
-      </header>
+    <section className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-16">
+      <div className="mx-auto flex max-w-4xl flex-col gap-10 lg:flex-row">
+        <div className="flex-1 space-y-6 rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl backdrop-blur">
+          <header className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.3em] text-pink-300">Panel del prestador</p>
+            <h1 className="text-3xl font-bold text-white">Registrar un nuevo servicio</h1>
+            <p className="text-sm text-gray-300">
+              Completa la información clave para que tus clientes puedan encontrar y reservar este
+              servicio desde la plataforma.
+            </p>
+          </header>
 
-      {message && (
-        <div className="rounded border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">
-          {message}
+          {message && (
+            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 shadow-inner">
+              {message}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-gray-400">Nombre</label>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Corte premium, maquillaje social..."
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-gray-400">Precio (USD)</label>
+                <input
+                  type="number"
+                  name="price"
+                  min={0}
+                  placeholder="Ej. 35"
+                  value={formData.price}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-gray-400">Duración (min)</label>
+                <input
+                  type="number"
+                  name="durationMinutes"
+                  min={1}
+                  placeholder="Ej. 45"
+                  value={formData.durationMinutes}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-gray-400">Estado</label>
+                <label className="flex h-[52px] items-center justify-between rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-gray-200">
+                  Activo
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleChange}
+                    className="h-4 w-4 accent-pink-500"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-wider text-gray-400">Descripción</label>
+              <textarea
+                name="description"
+                placeholder="Detalle la experiencia, productos utilizados y los beneficios del servicio."
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-pink-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Creando servicio..." : "Guardar servicio"}
+            </button>
+          </form>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          name="name"
-          placeholder="Nombre del servicio"
-          value={formData.name}
-          onChange={handleChange}
-          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-          required
-        />
-        <textarea
-          name="description"
-          placeholder="Descripción"
-          value={formData.description}
-          onChange={handleChange}
-          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-          required
-        />
-        <input
-          type="number"
-          name="price"
-          placeholder="Precio"
-          value={formData.price}
-          onChange={handleChange}
-          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-          min={0}
-          required
-        />
-        <input
-          type="number"
-          name="durationMinutes"
-          placeholder="Duración (minutos)"
-          value={formData.durationMinutes}
-          onChange={handleChange}
-          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/60"
-          min={1}
-          required
-        />
-        <label className="flex items-center space-x-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            name="isActive"
-            checked={formData.isActive}
-            onChange={handleChange}
-            className="h-4 w-4"
-          />
-          <span>Activo</span>
-        </label>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-60"
-        >
-          {loading ? "Creando..." : "Crear Servicio"}
-        </button>
-      </form>
-    </div>
+        <aside className="flex-1 rounded-3xl border border-white/5 bg-white/5 p-8 text-sm text-slate-100 shadow-inner backdrop-blur">
+          <h2 className="text-lg font-semibold text-white">Sugerencias de descripción</h2>
+          <p className="mt-2 text-gray-200">
+            Sé específico sobre la experiencia que ofreces. Los clientes reservan más cuando comprenden
+            qué recibirán y cuánto tiempo deben disponer.
+          </p>
+
+          <div className="mt-5 space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3">
+              <h3 className="text-sm font-semibold text-pink-200">Tips rápidos</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-gray-300">
+                <li>Indica si el servicio incluye lavado, productos especiales o asesoría.</li>
+                <li>Resalta el diferencial: técnica, productos premium o años de experiencia.</li>
+                <li>Menciona requisitos previos o recomendaciones post-servicio.</li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3">
+              <h3 className="text-sm font-semibold text-pink-200">Recuerda</h3>
+              <p className="mt-1 text-xs text-gray-300">
+                Los horarios disponibles se generan desde tu panel de&nbsp;
+                <span className="font-semibold text-white">slots de agenda</span>. Después de crear el servicio, configura tu disponibilidad para que los clientes puedan reservarlo.
+              </p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
   );
 }

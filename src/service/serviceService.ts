@@ -1,5 +1,6 @@
 import api from "./api";
 import { getAxiosError } from "@/utils/error";
+import type { User } from "@/types/user";
 
 export interface CreateServiceDTO {
   name: string;
@@ -16,8 +17,10 @@ export interface ServiceResponse {
   price: number;
   durationMinutes: number;
   isActive: boolean;
+  providerId: string | null;
   createdAt: string;
   updatedAt: string;
+  provider?: User | null;
 }
 
 export async function createService(serviceData: CreateServiceDTO): Promise<ServiceResponse> {
@@ -42,6 +45,15 @@ export async function getAllServices(): Promise<ServiceResponse[]> {
     return data;
   } catch {
     throw new Error("Error al obtener servicios");
+  }
+}
+
+export async function getActiveServices(): Promise<ServiceResponse[]> {
+  try {
+    const { data } = await api.get<ServiceResponse[]>("/services/active");
+    return data;
+  } catch {
+    throw new Error("Error al obtener servicios activos");
   }
 }
 
