@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { FaUser } from "react-icons/fa";
 import { FiMenu, FiX } from "react-icons/fi";
+import ProfilePanel from "./ProfilePanel";
 import Modal from "./Modal";
 import { useAuth } from "@/providers/AuthProvider";
 import type { ProviderType, UserRole } from "@/types/user";
@@ -150,7 +151,7 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed left-0 top-0 z-50 w-full border-b border-slate-800/80 bg-slate-900/80 px-5 py-4 backdrop-blur-xl sm:px-8">
+    <header className="fixed left-0 top-0 z-50 w-full border-b border-slate-800/80 bg-slate-900/80 px-5 py-5 backdrop-blur-xl sm:px-8">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
         <Link
           href="/"
@@ -263,77 +264,13 @@ export default function Header() {
 
       <Modal open={profileOpen} onClose={() => setProfileOpen(false)}>
         {user && (
-          <div className="space-y-5 text-white">
-            <header>
-              <p className="text-xs uppercase tracking-[0.4em] text-pink-300">Perfil</p>
-              <h2 className="mt-1 text-2xl font-semibold">{displayName}</h2>
-              <p className="text-sm text-gray-300">
-                {ROLE_LABEL[user.role]}
-                {user.providerType ? ` - ${PROVIDER_LABEL[user.providerType]}` : ""}
-              </p>
-            </header>
-
-            <dl className="grid gap-3 text-sm text-gray-200">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Correo</dt>
-                <dd className="mt-1">{user.email}</dd>
-              </div>
-              {user.phone && (
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                  <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Telefono</dt>
-                  <dd className="mt-1">{user.phone}</dd>
-                </div>
-              )}
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Estado</dt>
-                <dd className="mt-1">
-                  {user.emailVerified ? "Email verificado" : "Verificacion pendiente"}
-                </dd>
-              </div>
-            </dl>
-
-            <div className="flex flex-col gap-2 text-sm">
-              <Link
-                href="/mis-citas"
-                onClick={() => setProfileOpen(false)}
-                className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
-              >
-                Mis citas
-              </Link>
-              <Link
-                href="/reservar"
-                onClick={() => setProfileOpen(false)}
-                className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
-              >
-                Reservar nueva cita
-              </Link>
-              {canManageServices && (
-                <Link
-                  href="/services/create_service"
-                  onClick={() => setProfileOpen(false)}
-                  className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
-                >
-                  Gestionar servicios
-                </Link>
-              )}
-              {(isProvider || isAdmin) && (
-                <Link
-                  href="/dashboard/slots"
-                  onClick={() => setProfileOpen(false)}
-                  className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
-                >
-                  Panel de agenda
-                </Link>
-              )}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex w-full items-center justify-center rounded-full border border-red-400/50 px-5 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
-              >
-                Cerrar sesion
-              </button>
-            </div>
-          </div>
+          <ProfilePanel
+            user={user}
+            canManageServices={canManageServices}
+            canAccessSlots={isProvider || isAdmin}
+            onClose={() => setProfileOpen(false)}
+            onLogout={handleLogout}
+          />
         )}
       </Modal>
     </header>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
+import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import {
   getActiveServices,
   type ServiceResponse,
@@ -13,8 +14,6 @@ import {
 } from "@/service/serviceSlotService";
 import { createAppointment } from "@/service/appointmentService";
 import { getErrorMessage } from "@/utils/error";
-
-const todayIso = new Date().toISOString().split("T")[0];
 
 function formatDateLabel(raw: string): string {
   if (!raw) return "";
@@ -33,6 +32,8 @@ function formatTimeRange(slot: ServiceSlot): string {
   return `${slot.startTime.slice(0, 5)} - ${slot.endTime.slice(0, 5)}`;
 }
 
+const SLOT_PAGE_SIZE = 10;
+
 export default function ReservarPage() {
   const { user, initializing } = useAuth();
   const [services, setServices] = useState<ServiceResponse[]>([]);
@@ -40,11 +41,14 @@ export default function ReservarPage() {
   const [servicesError, setServicesError] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
 
-  const [selectedDate, setSelectedDate] = useState(todayIso);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
   const [slots, setSlots] = useState<ServiceSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [slotPageIndex, setSlotPageIndex] = useState(0);
 
   const [notes, setNotes] = useState("");
   const [booking, setBooking] = useState(false);
@@ -60,12 +64,23 @@ export default function ReservarPage() {
     [slots, selectedSlotId],
   );
 
+  const slotsPageCount = Math.max(1, Math.ceil(slots.length / SLOT_PAGE_SIZE));
+  const paginatedSlots = useMemo(
+    () =>
+      slots.slice(
+        slotPageIndex * SLOT_PAGE_SIZE,
+        slotPageIndex * SLOT_PAGE_SIZE + SLOT_PAGE_SIZE,
+      ),
+    [slots, slotPageIndex],
+  );
+
   const loadSlots = useCallback(
     async (serviceId: string, date: string, options?: { preserveSelection?: boolean }) => {
       setSlotsLoading(true);
       setSlotsError("");
       if (!options?.preserveSelection) {
         setSelectedSlotId("");
+        setSlotPageIndex(0);
       }
       try {
         const data = await getAvailableSlotsByService(serviceId, date);
@@ -80,6 +95,72 @@ export default function ReservarPage() {
     [],
   );
 
+  const refreshAvailability = useCallback(
+    async (serviceId: string) => {
+      setAvailabilityLoading(true);
+      setSlots([]);
+      setSlotsError("");
+      setSelectedSlotId("");
+      try {
+        const all = await getAvailableSlotsByService(serviceId);
+        const uniqueDates = Array.from(new Set(all.map((slot) => slot.date))).sort(
+          (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+        );
+        setAvailableDates(uniqueDates);
+
+        const nextDate =
+          selectedDate && uniqueDates.includes(selectedDate)
+            ? selectedDate
+            : uniqueDates[0] ?? "";
+
+        if (nextDate) {
+          setSelectedDate(nextDate);
+          await loadSlots(serviceId, nextDate, { preserveSelection: false });
+        } else {
+          setSelectedDate("");
+          setSlots([]);
+        }
+      } catch (error: unknown) {
+        setAvailableDates([]);
+        setSelectedDate("");
+        setSlots([]);
+        setSlotsError(getErrorMessage(error, "No se pudo cargar la disponibilidad"));
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    },
+    [loadSlots, selectedDate],
+  );
+
+  const handleDateSelect = useCallback(
+    async (date: string) => {
+      setSelectedDate(date);
+      if (!selectedServiceId) return;
+      await loadSlots(selectedServiceId, date, { preserveSelection: false });
+    },
+    [selectedServiceId, loadSlots],
+  );
+
+  useEffect(() => {
+    const maxIndex = Math.max(0, slotsPageCount - 1);
+    if (slotPageIndex > maxIndex) {
+      setSlotPageIndex(maxIndex);
+    }
+  }, [slotsPageCount, slotPageIndex]);
+
+  useEffect(() => {
+    if (!selectedSlotId) return;
+    const currentIndex = slots.findIndex((slot) => slot.id === selectedSlotId);
+    if (currentIndex === -1) {
+      setSelectedSlotId("");
+      return;
+    }
+    const desiredPage = Math.floor(currentIndex / SLOT_PAGE_SIZE);
+    if (desiredPage !== slotPageIndex) {
+      setSlotPageIndex(desiredPage);
+    }
+  }, [selectedSlotId, slots, slotPageIndex]);
+
   useEffect(() => {
     const loadServices = async () => {
       setServicesLoading(true);
@@ -89,6 +170,7 @@ export default function ReservarPage() {
         setServices(data);
         if (data.length > 0) {
           setSelectedServiceId(data[0].id);
+          setSelectedDate("");
         }
       } catch (error: unknown) {
         setServicesError(getErrorMessage(error, "No se pudieron cargar los servicios"));
@@ -101,12 +183,14 @@ export default function ReservarPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedServiceId || !selectedDate) {
+    if (!selectedServiceId) {
+      setAvailableDates([]);
+      setSelectedDate("");
       setSlots([]);
       return;
     }
-    void loadSlots(selectedServiceId, selectedDate);
-  }, [selectedServiceId, selectedDate, loadSlots]);
+    void refreshAvailability(selectedServiceId);
+  }, [selectedServiceId, refreshAvailability]);
 
   const handleBooking = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -135,12 +219,17 @@ export default function ReservarPage() {
     setFeedback(null);
 
     try {
+      const normalizedStart = selectedSlot.startTime.length > 5
+        ? selectedSlot.startTime.slice(0, 5)
+        : selectedSlot.startTime;
+
       await createAppointment({
         staffId,
         serviceId: selectedService.id,
         date: selectedDate,
-        startTime: selectedSlot.startTime,
+        startTime: normalizedStart,
         notes: notes.trim() ? notes.trim() : undefined,
+        clientId: user.id,
       });
 
       setFeedback({
@@ -271,69 +360,111 @@ export default function ReservarPage() {
               </section>
 
               <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-xl">
-                <header className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">2. Selecciona fecha y horario</h2>
-                    <p className="text-sm text-gray-400">
-                      Te mostramos la disponibilidad en tiempo real para el servicio elegido.
-                    </p>
-                  </div>
-                  <label className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950 px-4 py-2 text-sm text-gray-200">
-                    <span>Fecha</span>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      min={todayIso}
-                      onChange={(event) => setSelectedDate(event.target.value)}
-                      className="bg-transparent text-white focus:outline-none"
-                      required
-                    />
-                  </label>
+                <header className="mb-6">
+                  <h2 className="text-lg font-semibold text-white">2. Selecciona fecha y horario</h2>
+                  <p className="text-sm text-gray-400">
+                    Elige un dia disponible y luego selecciona el horario que prefieras.
+                  </p>
                 </header>
 
-                {slotsLoading ? (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className="h-20 animate-pulse rounded-2xl bg-white/5"
-                      />
-                    ))}
-                  </div>
-                ) : slotsError ? (
-                  <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                    {slotsError}
-                  </p>
-                ) : slots.length === 0 ? (
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-300">
-                    No hay horarios disponibles para esta fecha. Prueba otro dia o vuelve mas tarde.
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {slots.map((slot) => {
-                      const active = slot.id === selectedSlotId;
-                      return (
-                        <button
-                          key={slot.id}
-                          type="button"
-                          onClick={() => setSelectedSlotId(slot.id)}
-                          className={`flex h-full flex-col justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                            active
-                              ? "border-yellow-300 bg-yellow-400/10 text-white shadow-lg shadow-yellow-400/30"
-                              : "border-white/10 text-gray-200 hover:border-yellow-300/60 hover:bg-white/5"
-                          }`}
-                        >
-                          <span className="text-sm font-semibold uppercase tracking-wider">
-                            {formatTimeRange(slot)}
+                <AvailabilityCalendar
+                  availableDates={availableDates}
+                  selectedDate={selectedDate}
+                  loading={availabilityLoading}
+                  onSelect={(date) => {
+                    setSelectedSlotId("");
+                    setSlotsError("");
+                    void handleDateSelect(date);
+                  }}
+                />
+
+                <div className="mt-6">
+                  {!selectedDate ? (
+                    <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-300">
+                      Selecciona una fecha disponible para ver los horarios.
+                    </p>
+                  ) : slotsLoading ? (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="h-20 animate-pulse rounded-2xl bg-white/5"
+                        />
+                      ))}
+                    </div>
+                  ) : slotsError ? (
+                    <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      {slotsError}
+                    </p>
+                  ) : slots.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-gray-300">
+                      No hay horarios disponibles para esta fecha. Intenta con otro dia.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {slots.length > SLOT_PAGE_SIZE && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+                          <span>
+                            Mostrando{" "}
+                            {slotPageIndex * SLOT_PAGE_SIZE + 1}-
+                            {Math.min(slots.length, (slotPageIndex + 1) * SLOT_PAGE_SIZE)} de{" "}
+                            {slots.length} horarios
                           </span>
-                          <span className="text-xs text-gray-400">
-                            {selectedService?.provider?.fullName ?? "Personal disponible"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSlotPageIndex((value) => Math.max(0, value - 1))}
+                              disabled={slotPageIndex === 0}
+                              className="rounded-full border border-white/15 px-3 py-1 font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Anterior
+                            </button>
+                            <span className="text-white/70">
+                              {slotPageIndex + 1} / {slotsPageCount}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSlotPageIndex((value) =>
+                                  Math.min(slotsPageCount - 1, value + 1),
+                                )
+                              }
+                              disabled={slotPageIndex >= slotsPageCount - 1}
+                              className="rounded-full border border-white/15 px-3 py-1 font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {paginatedSlots.map((slot) => {
+                          const active = slot.id === selectedSlotId;
+                          return (
+                            <button
+                              key={slot.id}
+                              type="button"
+                              onClick={() => setSelectedSlotId(slot.id)}
+                              className={`flex h-full flex-col justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                                active
+                                  ? "border-yellow-300 bg-yellow-400/10 text-white shadow-lg shadow-yellow-400/30"
+                                  : "border-white/10 text-gray-200 hover:border-yellow-300/60 hover:bg-white/5"
+                              }`}
+                            >
+                              <span className="text-sm font-semibold uppercase tracking-wider">
+                                {formatTimeRange(slot)}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {selectedService?.provider?.fullName ?? "Personal disponible"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </section>
             </div>
 
@@ -355,7 +486,11 @@ export default function ReservarPage() {
                   <div>
                     <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">Fecha</dt>
                     <dd className="mt-1 capitalize">
-                      {selectedSlot ? formatDateLabel(selectedSlot.date) : formatDateLabel(selectedDate)}
+                      {selectedSlot
+                        ? formatDateLabel(selectedSlot.date)
+                        : selectedDate
+                          ? formatDateLabel(selectedDate)
+                          : "Selecciona una fecha"}
                     </dd>
                   </div>
                   <div>

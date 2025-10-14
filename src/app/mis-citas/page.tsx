@@ -10,6 +10,7 @@ import {
   type Appointment,
   type AppointmentStatus,
 } from "@/service/appointmentService";
+import { getMyReviews, type Review } from "@/service/reviewService";
 import { getErrorMessage } from "@/utils/error";
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
@@ -59,6 +60,8 @@ export default function MisCitas() {
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
+  const [reviewsError, setReviewsError] = useState("");
 
   useEffect(() => {
     if (initializing || !user) {
@@ -72,9 +75,18 @@ export default function MisCitas() {
     const loadAppointments = async () => {
       setLoading(true);
       setError("");
+      setReviewsError("");
       try {
-        const data = await getMyAppointments();
-        setAppointments(data);
+        const appointmentsData = await getMyAppointments();
+        setAppointments(appointmentsData);
+        try {
+          const reviewsData = await getMyReviews();
+          setMyReviews(reviewsData);
+        } catch (reviewErr: unknown) {
+          setReviewsError(
+            getErrorMessage(reviewErr, "No pudimos cargar tus reseñas"),
+          );
+        }
       } catch (err: unknown) {
         setError(getErrorMessage(err, "No pudimos cargar tus citas"));
       } finally {
@@ -111,6 +123,33 @@ export default function MisCitas() {
     () => sortedAppointments.filter((appointment) => !upcomingIds.has(appointment.id)),
     [sortedAppointments, upcomingIds],
   );
+
+  const reviewedAppointmentIds = useMemo(
+    () =>
+      new Set(
+        myReviews
+          .filter((review) => Boolean(review.appointmentId))
+          .map((review) => review.appointmentId as string),
+      ),
+    [myReviews],
+  );
+
+  const reviewedServiceIds = useMemo(
+    () =>
+      new Set(
+        myReviews
+          .filter((review) => !review.appointmentId)
+          .map((review) => review.serviceId),
+      ),
+    [myReviews],
+  );
+
+  const hasReviewForAppointment = (appointment: Appointment): boolean => {
+    if (appointment.id && reviewedAppointmentIds.has(appointment.id)) {
+      return true;
+    }
+    return reviewedServiceIds.has(appointment.serviceId);
+  };
 
   const openCancelModal = (appointment: Appointment) => {
     setCancelTarget(appointment);
@@ -206,6 +245,12 @@ export default function MisCitas() {
             {error && (
               <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                 {error}
+              </div>
+            )}
+
+            {reviewsError && (
+              <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {reviewsError}
               </div>
             )}
 
@@ -347,15 +392,29 @@ export default function MisCitas() {
                             </div>
                             <span
                               className={`inline-flex h-8 items-center rounded-full border px-3 text-[0.65rem] font-semibold uppercase tracking-wider ${STATUS_STYLES[appointment.status]}`}
-                            >
-                              {STATUS_LABELS[appointment.status]}
-                            </span>
-                          </div>
-                        </article>
-                      ))}
+                        >
+                          {STATUS_LABELS[appointment.status]}
+                        </span>
+                      </div>
+
+                      {appointment.status === "completada" && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                      {hasReviewForAppointment(appointment) ? (
+                        <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                          Reseña enviada
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-white/15 px-4 py-2 text-xs text-gray-200">
+                          Comparte tu reseña desde la sección de servicios.
+                        </span>
+                      )}
                     </div>
                   )}
-                </section>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
               </>
             )}
           </div>
@@ -402,6 +461,7 @@ export default function MisCitas() {
           </div>
         </div>
       </Modal>
+
     </main>
   );
 }

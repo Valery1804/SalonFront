@@ -1,91 +1,122 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getErrorMessage } from "@/utils/error";
-
-interface ProfileResponse {
-  name?: string;
-  email?: string;
-  role?: string;
-}
+import Link from "next/link";
+import AuthLayout from "@/components/auth/AuthLayout";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
-  const [message, setMessage] = useState("Cargando perfil...");
-  const [loading, setLoading] = useState(true);
+  const { user, initializing, logout } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token"); // Debes guardar el token aqui en el login
-
-    if (!token) {
-      setMessage("No hay sesion activa. Inicia sesion para continuar.");
-      setLoading(false);
-      return;
-    }
-
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch("https://salonback-production.up.railway.app/api/auth/profile", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = (await res.json()) as ProfileResponse;
-
-        if (res.ok) {
-          setProfile(data);
-          setMessage("");
-        } else if (res.status === 401) {
-          setMessage("Sesion no autorizada o expirada. Inicia sesion nuevamente.");
-        } else {
-          setMessage("Error al obtener el perfil del usuario.");
-        }
-      } catch (error: unknown) {
-        console.error(error);
-        setMessage(getErrorMessage(error, "Error al conectar con el servidor."));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, []);
+  const handleLogout = () => {
+    logout();
+    window.location.href = "/auth/login";
+  };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 to-indigo-900 text-white p-6">
-      <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Perfil del Usuario</h1>
+    <AuthLayout
+      heroTitle="Gestiona tu perfil"
+      heroSubtitle="Actualiza tus datos y protege tu informacion en SalonClick."
+      heroDescription="Revisa tu correo, estado de verificacion y accesos directos sin salir de esta pantalla."
+      footer={
+        !user ? (
+          <p className="text-center text-sm">
+            No tienes cuenta?{" "}
+            <Link
+              href="/auth/register"
+              className="font-semibold text-pink-300 transition hover:text-orange-200"
+            >
+              Crear cuenta
+            </Link>
+          </p>
+        ) : null
+      }
+    >
+      {initializing ? (
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-gray-300">Cargando perfil...</p>
+        </div>
+      ) : user ? (
+        <div className="space-y-6">
+          <header className="text-center">
+            <h1 className="text-3xl font-semibold text-white">
+              {user.fullName?.trim() ||
+                `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+                user.email}
+            </h1>
+            <p className="mt-2 text-sm text-gray-300">{user.email}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.3em] text-pink-300">
+              {user.role.replace("_", " ")}
+            </p>
+          </header>
 
-        {loading ? (
-          <p className="text-gray-300 animate-pulse">Cargando...</p>
-        ) : profile ? (
-          <div className="space-y-2 text-left">
-            <p>
-              <strong>Nombre:</strong> {profile.name ?? "Sin nombre"}
-            </p>
-            <p>
-              <strong>Email:</strong> {profile.email ?? "Sin email"}
-            </p>
-            {profile.role && (
-              <p>
-                <strong>Rol:</strong> {profile.role}
-              </p>
-            )}
+          <dl className="grid gap-4 text-sm text-gray-200">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">
+                Telefono
+              </dt>
+              <dd className="mt-1">{user.phone ?? "Sin registrar"}</dd>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">
+                Verificacion
+              </dt>
+              <dd className="mt-1">
+                {user.emailVerified ? "Correo verificado" : "Verificacion pendiente"}
+              </dd>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <dt className="text-xs uppercase tracking-[0.3em] text-gray-400">
+                Ultimo acceso
+              </dt>
+              <dd className="mt-1">
+                {user.updatedAt
+                  ? new Date(user.updatedAt).toLocaleString("es-ES", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Sin informacion"}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-col gap-2 text-sm">
+            <Link
+              href="/mis-citas"
+              className="inline-flex w-full items-center justify-center rounded-full border border-white/10 px-5 py-2 font-semibold text-white transition hover:border-pink-400/60"
+            >
+              Ver mis citas
+            </Link>
+            <Link
+              href="/reservar"
+              className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
+            >
+              Reservar una cita
+            </Link>
             <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                window.location.href = "/auth/login";
-              }}
-              className="mt-6 w-full py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex w-full items-center justify-center rounded-full border border-red-400/50 px-5 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
             >
               Cerrar sesion
             </button>
           </div>
-        ) : (
-          <p className="text-gray-300 text-center">{message}</p>
-        )}
-      </div>
-    </main>
+        </div>
+      ) : (
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-gray-300">
+            No hay sesion activa. Inicia sesion para ver tu perfil.
+          </p>
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:shadow-pink-500/40"
+          >
+            Ir al inicio de sesion
+          </Link>
+        </div>
+      )}
+    </AuthLayout>
   );
 }
