@@ -22,15 +22,12 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${inter.className} bg-slate-900 text-white`}>
         <Providers>
-          {/* Header global */}
           <Header />
 
-          {/* Contenido principal de cada pagina */}
-          <main className="pt-24">
+          <main className="min-h-screen ">
             {children}
           </main>
 
-          {/* Footer global */}
           <Footer />
         </Providers>
       </body>

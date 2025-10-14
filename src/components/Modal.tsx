@@ -1,5 +1,7 @@
-import type { MouseEvent, ReactNode } from "react";
-import { Fragment } from "react";
+"use client";
+
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   open: boolean;
@@ -8,7 +10,14 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, children }: ModalProps) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!open || !mounted) return null;
 
   const handleBackdropClick = () => {
     onClose();
@@ -18,14 +27,14 @@ export default function Modal({ open, onClose, children }: ModalProps) {
     event.stopPropagation();
   };
 
-  return (
-    <Fragment>
+  return createPortal(
+    <>
       <div
-        className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 z-[9998] bg-slate-950/70 backdrop-blur-sm transition-opacity"
         onClick={handleBackdropClick}
       />
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
         onClick={handleBackdropClick}
       >
         <div
@@ -45,6 +54,7 @@ export default function Modal({ open, onClose, children }: ModalProps) {
           </div>
         </div>
       </div>
-    </Fragment>
+    </>,
+    document.body,
   );
 }
