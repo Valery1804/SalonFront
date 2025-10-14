@@ -3,6 +3,10 @@ import { getAxiosError } from "@/utils/error";
 import type { ServiceResponse } from "./serviceService";
 import type { User } from "@/types/user";
 
+type ApiErrorResponse = {
+  message?: string | string[];
+};
+
 export type ServiceSlotStatus =
   | "available"
   | "reserved"
@@ -44,7 +48,7 @@ export async function generateServiceSlots(
     );
     return data;
   } catch (error: unknown) {
-    const axiosError = getAxiosError(error);
+    const axiosError = getAxiosError<ApiErrorResponse>(error);
     const message =
       axiosError?.response?.data?.message ??
       axiosError?.message ??
@@ -83,7 +87,7 @@ export async function updateServiceSlotStatus(
     );
     return data;
   } catch (error: unknown) {
-    const axiosError = getAxiosError(error);
+    const axiosError = getAxiosError<ApiErrorResponse>(error);
     const message =
       axiosError?.response?.data?.message ??
       axiosError?.message ??

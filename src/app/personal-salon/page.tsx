@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import {
   getActiveServices,
   type ServiceResponse,
@@ -21,7 +22,7 @@ interface ProviderCard {
 
 const PROVIDER_TYPE_META: Record<
   ProviderType,
-  { label: string; icon: JSX.Element; accent: string }
+  { label: string; icon: ReactElement; accent: string }
 > = {
   barbero: {
     label: "Barbero",

@@ -1,26 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { updateUser, getUserById, UserResponse, UpdateUserDTO } from "@/service/userService";
+import { useEffect, useState } from "react";
+import {
+  getUserById,
+  updateUser,
+  type UpdateUserDTO,
+  type UserResponse,
+} from "@/service/userService";
 import { getErrorMessage } from "@/utils/error";
+import type { UserRole } from "@/types/user";
 
 interface FormData {
   email: string;
   firstName: string;
   lastName: string;
   phone: string;
-  role: "cliente" | "admin";
+  role: UserRole;
   isActive: boolean;
   emailVerificationToken: string;
 }
 
 export default function UpdateUserPage() {
   const [user, setUser] = useState<UserResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const userId = "ID_DEL_USUARIO_A_ACTUALIZAR";
-
   const [formData, setFormData] = useState<FormData>({
     email: "",
     firstName: "",
@@ -30,6 +31,10 @@ export default function UpdateUserPage() {
     isActive: true,
     emailVerificationToken: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const userId = "ID_DEL_USUARIO_A_ACTUALIZAR";
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -40,54 +45,69 @@ export default function UpdateUserPage() {
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
-          phone: data.phone,
-          role: data.role === "admin" ? "admin" : "cliente",
+          phone: data.phone ?? "",
+          role: data.role,
           isActive: data.isActive,
           emailVerificationToken: "",
         });
-      } catch (error: unknown) {
-        setMessage(getErrorMessage(error, "No se pudo cargar el usuario"));
+      } catch (caughtError: unknown) {
+        setMessage(getErrorMessage(caughtError, "No se pudo cargar el usuario"));
       }
     };
-    fetchUser();
+
+    void fetchUser();
   }, [userId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const target = e.target;
-    const { name, value } = target;
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const target = event.target;
+    const { name } = target;
 
-    const normalizedValue =
-      target instanceof HTMLInputElement && target.type === "checkbox" ? target.checked : value;
+    let normalized: string | boolean = target.value;
+    if (target instanceof HTMLInputElement && target.type === "checkbox") {
+      normalized = target.checked;
+    }
 
     setFormData((prev) => ({
       ...prev,
-      [name]: normalizedValue,
+      [name]:
+        name === "role" && typeof normalized === "string"
+          ? (normalized as UserRole)
+          : normalized,
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setMessage("");
 
-    const updateData: UpdateUserDTO = { ...formData }; // coincide con el DTO
+    const updateData: UpdateUserDTO = {
+      email: formData.email,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      phone: formData.phone,
+      role: formData.role,
+      isActive: formData.isActive,
+      emailVerificationToken: formData.emailVerificationToken || undefined,
+    };
 
     try {
       await updateUser(userId, updateData);
       setMessage("Usuario actualizado exitosamente");
-      // router.push("/users"); // redirigir opcionalmente
-    } catch (error: unknown) {
-      setMessage(getErrorMessage(error, "No se pudo actualizar el usuario"));
+    } catch (caughtError: unknown) {
+      setMessage(getErrorMessage(caughtError, "No se pudo actualizar el usuario"));
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user) return <p className="text-center mt-10">Cargando usuario...</p>;
+  if (!user) {
+    return <p className="mt-10 text-center">Cargando usuario...</p>;
+  }
 
   return (
-    <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded mt-10">
-      <h1 className="text-2xl font-bold mb-4">Actualizar Usuario</h1>
+    <div className="mx-auto mt-10 max-w-lg rounded bg-white p-6 shadow-md">
+      <h1 className="mb-4 text-2xl font-bold">Actualizar Usuario</h1>
       {message && <p className="mb-4 text-red-500">{message}</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
@@ -96,7 +116,7 @@ export default function UpdateUserPage() {
           placeholder="Email"
           value={formData.email}
           onChange={handleChange}
-          className="w-full border px-3 py-2 rounded"
+          className="w-full rounded border px-3 py-2"
         />
         <input
           type="text"
@@ -104,7 +124,7 @@ export default function UpdateUserPage() {
           placeholder="Nombre"
           value={formData.firstName}
           onChange={handleChange}
-          className="w-full border px-3 py-2 rounded"
+          className="w-full rounded border px-3 py-2"
         />
         <input
           type="text"
@@ -112,26 +132,27 @@ export default function UpdateUserPage() {
           placeholder="Apellido"
           value={formData.lastName}
           onChange={handleChange}
-          className="w-full border px-3 py-2 rounded"
+          className="w-full rounded border px-3 py-2"
         />
         <input
           type="text"
           name="phone"
-          placeholder="Teléfono"
+          placeholder="Telefono"
           value={formData.phone}
           onChange={handleChange}
-          className="w-full border px-3 py-2 rounded"
+          className="w-full rounded border px-3 py-2"
         />
         <select
           name="role"
           value={formData.role}
           onChange={handleChange}
-          className="w-full border px-3 py-2 rounded"
+          className="w-full rounded border px-3 py-2"
         >
           <option value="cliente">Cliente</option>
-          <option value="admin">Admin</option>
+          <option value="admin">Administrador</option>
+          <option value="prestador_servicio">Prestador de servicio</option>
         </select>
-        <label className="flex items-center space-x-2">
+        <label className="flex items-center space-x-2 text-sm">
           <input
             type="checkbox"
             name="isActive"
@@ -143,15 +164,15 @@ export default function UpdateUserPage() {
         <input
           type="text"
           name="emailVerificationToken"
-          placeholder="Token de verificación"
+          placeholder="Token de verificacion"
           value={formData.emailVerificationToken}
           onChange={handleChange}
-          className="w-full border px-3 py-2 rounded"
+          className="w-full rounded border px-3 py-2"
         />
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Actualizando..." : "Actualizar"}
         </button>
