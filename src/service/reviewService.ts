@@ -1,6 +1,10 @@
 import api from "./api";
 import { getAxiosError } from "@/utils/error";
 
+type ApiErrorResponse = {
+  message?: string | string[];
+};
+
 export interface ReviewAuthor {
   id: string;
   fullName?: string;
@@ -42,7 +46,7 @@ export async function createReview(payload: CreateReviewDTO): Promise<Review> {
     const { data } = await api.post<Review>("/reviews", payload);
     return data;
   } catch (error: unknown) {
-    const axiosError = getAxiosError(error);
+    const axiosError = getAxiosError<ApiErrorResponse>(error);
     const message =
       typeof axiosError?.response?.data?.message === "string"
         ? axiosError.response.data.message
@@ -91,7 +95,7 @@ export async function getPublicReviews(): Promise<Review[]> {
     const { data } = await api.get<Review[]>("/reviews");
     return data;
   } catch (error: unknown) {
-    const axiosError = getAxiosError(error);
+    const axiosError = getAxiosError<ApiErrorResponse>(error);
     const message =
       axiosError?.response?.data?.message ??
       axiosError?.message ??

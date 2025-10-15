@@ -40,7 +40,7 @@ export default function ResendVerificationPage() {
       } else {
         setError(data.message ?? "No pudimos reenviar el correo de verificacion.");
       }
-    } catch (caughtError) {
+    } catch {
       setError("No fue posible conectar con el servidor. Intentalo mas tarde.");
     } finally {
       setLoading(false);

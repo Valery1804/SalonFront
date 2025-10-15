@@ -8,21 +8,6 @@ import { FiMenu, FiX } from "react-icons/fi";
 import ProfilePanel from "./ProfilePanel";
 import Modal from "./Modal";
 import { useAuth } from "@/providers/AuthProvider";
-import type { ProviderType, UserRole } from "@/types/user";
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  admin: "Administrador",
-  cliente: "Cliente",
-  prestador_servicio: "Prestador de servicio",
-};
-
-const PROVIDER_LABEL: Record<ProviderType, string> = {
-  barbero: "Barbero",
-  estilista: "Estilista",
-  manicurista: "Manicurista",
-  maquilladora: "Maquilladora",
-};
-
 interface NavItem {
   key: string;
   label: string;
@@ -214,7 +199,7 @@ export default function Header() {
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-pink-400/60 hover:text-pink-200"
               >
                 <FaUser className="text-xs" />
-                <span>{user.firstName ?? "Perfil"}</span>
+                <span>{displayName || "Perfil"}</span>
               </button>
               <button
                 type="button"
@@ -312,3 +297,4 @@ export default function Header() {
     </header>
   );
 }
+
