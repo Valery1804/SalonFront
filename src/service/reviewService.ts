@@ -44,9 +44,9 @@ export async function createReview(payload: CreateReviewDTO): Promise<Review> {
   } catch (error: unknown) {
     const axiosError = getAxiosError(error);
     const message =
-      axiosError?.response?.data?.message ??
-      axiosError?.message ??
-      "No se pudo guardar la resena";
+      typeof axiosError?.response?.data?.message === "string"
+        ? axiosError.response.data.message
+        : axiosError?.message ?? "No se pudo guardar la resena";
     throw new Error(
       Array.isArray(message) ? message.join(", ") : String(message),
     );
