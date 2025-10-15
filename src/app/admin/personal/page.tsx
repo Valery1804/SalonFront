@@ -2,8 +2,6 @@
 import { FaUserTie, FaPaintBrush, FaCut, FaHandSparkles } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { getAllUsers, updateUser } from "@/service/userService";
-  const handleToggleActive = async (user: any) => {
-// ...existing code...
 
 const personal = [
   { nombre: "Barbero", tipo: "barbero", icono: <FaUserTie className="text-4xl text-blue-500" />, servicios: ["Corte de cabello", "Barba", "Afeitado"] },
@@ -13,6 +11,21 @@ const personal = [
 ];
 
 export default function AdminPersonalSalon() {
+  const handleToggleActive = async (user: any) => {
+    const action = user.isActive ? "deshabilitar" : "habilitar";
+    const confirmMsg = `¿Seguro que deseas ${action} la cuenta de ${user.fullName}?`;
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      await updateUser(user.id, { isActive: !user.isActive });
+      setUsers((prev: any[]) =>
+        prev.map((u: any) =>
+          u.id === user.id ? { ...u, isActive: !u.isActive } : u
+        )
+      );
+    } catch (err) {
+      alert("No se pudo actualizar el estado del usuario");
+    }
+  };
 
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -30,21 +43,6 @@ export default function AdminPersonalSalon() {
     }
   }, [selected]);
 
-  const handleToggleActive = async (user: any) => {
-    const action = user.isActive ? "deshabilitar" : "habilitar";
-    const confirmMsg = `¿Seguro que deseas ${action} la cuenta de ${user.fullName}?`;
-    if (!window.confirm(confirmMsg)) return;
-    try {
-      await updateUser(user.id, { isActive: !user.isActive });
-      setUsers((prev: any[]) =>
-        prev.map((u: any) =>
-          u.id === user.id ? { ...u, isActive: !u.isActive } : u
-        )
-      );
-    } catch (err) {
-      alert("No se pudo actualizar el estado del usuario");
-    }
-  };
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 via-pink-100 to-green-100 py-10">
@@ -106,3 +104,4 @@ export default function AdminPersonalSalon() {
     </div>
   );
 }
+
