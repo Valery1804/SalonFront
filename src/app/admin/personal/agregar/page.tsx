@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createUser } from "@/service/userService";
+import type { UserRole, ProviderType, User } from "@/types/user";
 
 const roles = [
   { value: "prestador_servicio", label: "Prestador de servicio" },
@@ -24,23 +25,20 @@ export default function AgregarPersonal() {
     providerType: "barbero",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  // Mensajes eliminados para evitar warnings y errores
 
   const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  setForm({ ...form, [e.target.name]: e.target.value }); // Puedes tipar e como React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   };
 
   const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+  e.preventDefault(); // Puedes tipar e como React.FormEvent<HTMLFormElement>
+  setLoading(true);
     try {
       await createUser({
         ...form,
-        role: form.role as any,
-        providerType: form.providerType as any,
+        role: form.role as UserRole,
+        providerType: form.providerType as ProviderType,
       });
       setSuccess("Personal registrado exitosamente");
       setForm({
@@ -56,9 +54,10 @@ export default function AgregarPersonal() {
         window.location.href = "/admin/personal";
       }, 1200);
     } catch (err: any) {
-      setError(err.message || "No se pudo registrar el personal");
+  // Puedes mostrar el error con alert si lo necesitas
+  alert("No se pudo registrar el personal");
     } finally {
-      setLoading(false);
+  setLoading(false);
     }
   };
 

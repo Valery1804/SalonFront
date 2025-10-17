@@ -2,6 +2,7 @@
 import { FaUserTie, FaPaintBrush, FaCut, FaHandSparkles } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { getAllUsers, updateUser } from "@/service/userService";
+import type { User } from "@/types/user";
 
 const personal = [
   { nombre: "Barbero", tipo: "barbero", icono: <FaUserTie className="text-4xl text-blue-500" />, servicios: ["Corte de cabello", "Barba", "Afeitado"] },
@@ -29,7 +30,7 @@ export default function AdminPersonalSalon() {
 
 
   const [selected, setSelected] = useState<string | null>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function AdminPersonalSalon() {
       setLoading(true);
       getAllUsers()
         .then((data) => {
-          setUsers(data.filter((u: any) => u.providerType === selected));
+          setUsers(data.filter((u: User) => u.providerType === selected));
         })
         .finally(() => setLoading(false));
     }
