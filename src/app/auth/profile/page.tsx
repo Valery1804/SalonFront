@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { showToast } = useToast();
   const { user, initializing, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
-    window.location.href = "/auth/login";
+    showToast({
+      title: "Sesión cerrada",
+      description: "Vuelve pronto a SalonClick.",
+      variant: "info",
+    });
+    router.replace("/auth/login");
   };
 
   return (
