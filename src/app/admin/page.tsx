@@ -1,27 +1,20 @@
 "use client";
-import Link from "next/link";
 
-export default function AdminDashboard() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function AdminDashboardRedirect() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/admin/inicio");
+  }, [router]);
+
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 via-yellow-100 to-pink-100 py-10">
-      <h1 className="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-400">Panel de Administrador</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
-        <Link href="/admin/agenda" className="block bg-white rounded-xl shadow-lg p-8 text-center hover:scale-105 transition-all border border-yellow-200">
-          <h2 className="text-2xl font-bold mb-2 text-pink-500">Agenda de Citas</h2>
-          <p className="text-gray-600">Visualiza las citas agendadas para el día.</p>
-        </Link>
-        <Link href="/admin/reportes" className="block bg-white rounded-xl shadow-lg p-8 text-center hover:scale-105 transition-all border border-yellow-200">
-          <h2 className="text-2xl font-bold mb-2 text-orange-500">Reportes</h2>
-          <p className="text-gray-600">Consulta los reportes mensuales de citas agendadas.</p>
-        </Link>
-        <Link href="/admin/personal" className="block bg-white rounded-xl shadow-lg p-8 text-center hover:scale-105 transition-all border border-yellow-200">
-          <h2 className="text-2xl font-bold mb-2 text-blue-500">Personal del Salón</h2>
-          <p className="text-gray-600">Revisa el personal disponible en el salón.</p>
-        </Link>
-        <Link href="/admin/servicios" className="block bg-white rounded-xl shadow-lg p-8 text-center hover:scale-105 transition-all border border-yellow-200">
-          <h2 className="text-2xl font-bold mb-2 text-green-500">Servicios</h2>
-          <p className="text-gray-600">Gestiona los servicios que ofrece el salón.</p>
-        </Link>
+    <div className="flex min-h-[60vh] items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="space-y-3 text-center text-white">
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-pink-400" />
+        <p className="text-sm text-white/70">Redirigiendo al panel principal…</p>
       </div>
     </div>
   );

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { register } from "@/service/authService";
 import { getErrorMessage } from "@/utils/error";
 
@@ -35,7 +37,9 @@ const fieldLabels: Record<keyof RegisterForm, string> = {
 };
 
 export default function Register() {
+  const router = useRouter();
   const { setSession } = useAuth();
+  const { showToast } = useToast();
   const [form, setForm] = useState<RegisterForm>({
     email: "",
     password: "",
@@ -64,8 +68,12 @@ export default function Register() {
     try {
       const data = await register(form);
       setSession(data);
-      alert(`Usuario registrado: ${data.user.fullName}`);
-      window.location.href = "/";
+      showToast({
+        variant: "success",
+        title: "Cuenta creada",
+        description: `Bienvenido/a ${data.user.fullName ?? data.user.email}`,
+      });
+      router.replace("/");
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError, "No se pudo registrar el usuario"));
     } finally {
