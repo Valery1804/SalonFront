@@ -3,9 +3,9 @@ import Link from "next/link";
 
 export default function AdminInicio() {
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 via-yellow-100 to-pink-100 py-10">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-10">
       <h1 className="text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-400">¡Bienvenido Administrador!</h1>
-      <p className="text-lg text-gray-700 mb-8 text-center max-w-xl">Gestiona tu salón de belleza de forma eficiente. Accede rápidamente a la agenda, reportes, personal y servicios desde aquí.</p>
+      <p className="text-lg text-gray-300 mb-8 text-center max-w-xl">Gestiona tu salón de belleza de forma eficiente. Accede rápidamente a la agenda, reportes, personal y servicios desde aquí.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
         <Link href="/admin/agenda" className="block bg-white rounded-xl shadow-lg p-8 text-center hover:scale-105 transition-all border border-yellow-200">
           <h2 className="text-2xl font-bold mb-2 text-pink-500">Agenda de Citas</h2>
