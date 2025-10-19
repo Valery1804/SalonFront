@@ -1,315 +1,417 @@
 "use client";
 
-import { useState } from "react";
-import { FiPlus, FiEdit3, FiTrash2, FiClock, FiDollarSign, FiUsers, FiSearch } from "react-icons/fi";
-import { FaCut, FaPaintBrush, FaHandSparkles, FaUserTie } from "react-icons/fa";
-
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  duration: number;
-  price: number;
-  category: "corte" | "color" | "manicure" | "maquillaje" | "barba" | "tratamiento";
-  isActive: boolean;
-  providerTypes: string[];
-}
-
-// Datos de ejemplo
-const mockServices: Service[] = [
-  {
-    id: "1",
-    name: "Corte de cabello masculino",
-    description: "Corte clásico y moderno para hombres",
-    duration: 30,
-    price: 25000,
-    category: "corte",
-    isActive: true,
-    providerTypes: ["barbero", "estilista"]
-  },
-  {
-    id: "2",
-    name: "Corte y peinado femenino",
-    description: "Corte y peinado personalizado para mujeres",
-    duration: 60,
-    price: 45000,
-    category: "corte",
-    isActive: true,
-    providerTypes: ["estilista"]
-  },
-  {
-    id: "3",
-    name: "Tinte completo",
-    description: "Coloración completa del cabello",
-    duration: 120,
-    price: 80000,
-    category: "color",
-    isActive: true,
-    providerTypes: ["estilista"]
-  },
-  {
-    id: "4",
-    name: "Manicure clásica",
-    description: "Manicure tradicional con esmaltado",
-    duration: 45,
-    price: 20000,
-    category: "manicure",
-    isActive: true,
-    providerTypes: ["manicurista"]
-  },
-  {
-    id: "5",
-    name: "Maquillaje social",
-    description: "Maquillaje para eventos sociales",
-    duration: 60,
-    price: 60000,
-    category: "maquillaje",
-    isActive: true,
-    providerTypes: ["maquilladora"]
-  },
-  {
-    id: "6",
-    name: "Arreglo de barba",
-    description: "Recorte y arreglo de barba",
-    duration: 20,
-    price: 15000,
-    category: "barba",
-    isActive: false,
-    providerTypes: ["barbero"]
-  }
-];
-
-const categories = [
-  { key: "corte", label: "Cortes", icon: <FaCut className="text-blue-500" />, color: "blue" },
-  { key: "color", label: "Coloración", icon: <FaPaintBrush className="text-purple-500" />, color: "purple" },
-  { key: "manicure", label: "Manicure", icon: <FaHandSparkles className="text-pink-500" />, color: "pink" },
-  { key: "maquillaje", label: "Maquillaje", icon: <FaPaintBrush className="text-orange-500" />, color: "orange" },
-  { key: "barba", label: "Barbería", icon: <FaUserTie className="text-green-500" />, color: "green" },
-  { key: "tratamiento", label: "Tratamientos", icon: <FaCut className="text-indigo-500" />, color: "indigo" }
-];
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  deleteService,
+  getAllServices,
+  updateService,
+  type ServiceResponse,
+} from "@/service/serviceService";
+import ServiceForm from "@/components/services/ServiceForm";
+import Modal from "@/components/Modal";
+import { useToast } from "@/providers/ToastProvider";
+import { getErrorMessage } from "@/utils/error";
+import { getAllUsers, type User } from "@/service/userService";
+import {
+  FaClock,
+  FaMoneyBillWave,
+  FaPlus,
+  FaStar,
+  FaTrash,
+  FaUserTie,
+} from "react-icons/fa";
 
 export default function AdminServicios() {
-  const [services, setServices] = useState<Service[]>(mockServices);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const { showToast } = useToast();
+  const [services, setServices] = useState<ServiceResponse[]>([]);
+  const [providers, setProviders] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceResponse | null>(
+    null,
+  );
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ServiceResponse | null>(null);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [data, users] = await Promise.all([
+        getAllServices(),
+        getAllUsers(),
+      ]);
+      setServices(
+        data.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1)),
+      );
+      setProviders(
+        users.filter((user) => user.role === "prestador_servicio"),
+      );
+    } catch (caughtError: unknown) {
+      const message = getErrorMessage(
+        caughtError,
+        "No se pudieron cargar los servicios",
+      );
+      setError(message);
+      showToast({ variant: "error", description: message });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
 
-  const getCategoryInfo = (categoryKey: string) => {
-    return categories.find(cat => cat.key === categoryKey) || categories[0];
-  };
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
-  const filteredServices = services.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || service.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredServices = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return services;
+    }
 
-  const toggleServiceStatus = (serviceId: string) => {
-    setServices(prev => prev.map(service => 
-      service.id === serviceId 
-        ? { ...service, isActive: !service.isActive }
-        : service
-    ));
-  };
+    return services.filter((service) => {
+      const providerName = service.provider?.fullName ?? "";
+      return (
+        service.name.toLowerCase().includes(query) ||
+        providerName.toLowerCase().includes(query) ||
+        service.description.toLowerCase().includes(query)
+      );
+    });
+  }, [search, services]);
 
-  const deleteService = (serviceId: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este servicio?')) {
-      setServices(prev => prev.filter(service => service.id !== serviceId));
+  const toggleActiveState = async (service: ServiceResponse) => {
+    setProcessingId(service.id);
+    try {
+      const updated = await updateService(service.id, {
+        isActive: !service.isActive,
+      });
+      setServices((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      showToast({
+        variant: "success",
+        title: "Estado actualizado",
+        description: `El servicio ${updated.isActive ? "se activó" : "se desactivó"} correctamente.`,
+      });
+    } catch (caughtError: unknown) {
+      const message = getErrorMessage(
+        caughtError,
+        "No se pudo actualizar el servicio",
+      );
+      setError(message);
+      showToast({ variant: "error", description: message });
+    } finally {
+      setProcessingId(null);
     }
   };
 
-  const activeServicesCount = services.filter(s => s.isActive).length;
-  const totalRevenue = services.reduce((sum, s) => s.isActive ? sum + s.price : sum, 0);
-  const avgDuration = services.length > 0 
-    ? Math.round(services.reduce((sum, s) => sum + s.duration, 0) / services.length)
-    : 0;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setProcessingId(deleteTarget.id);
+    try {
+      await deleteService(deleteTarget.id);
+      setServices((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      showToast({
+        variant: "success",
+        title: "Servicio eliminado",
+        description: "Se eliminó el servicio y dejará de mostrarse públicamente.",
+      });
+      setDeleteTarget(null);
+    } catch (caughtError: unknown) {
+      const message = getErrorMessage(
+        caughtError,
+        "No se pudo eliminar el servicio",
+      );
+      setError(message);
+      showToast({ variant: "error", description: message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleFormClose = () => {
+    setModalOpen(false);
+    setEditingService(null);
+  };
+
+  const providerOptions = useMemo(
+    () =>
+      providers.map((provider) => ({
+        id: provider.id,
+        label:
+          provider.fullName?.trim() ||
+          `${provider.firstName ?? ""} ${provider.lastName ?? ""}`.trim() ||
+          provider.email,
+      })),
+    [providers],
+  );
+
+  const handleCreated = (service: ServiceResponse) => {
+    setServices((prev) => [service, ...prev]);
+    showToast({
+      variant: "success",
+      title: "Servicio publicado",
+      description: "Los clientes ya pueden reservar la nueva experiencia.",
+    });
+  };
+
+  const handleUpdated = (service: ServiceResponse) => {
+    setServices((prev) =>
+      prev.map((item) => (item.id === service.id ? service : item)),
+    );
+    showToast({
+      variant: "success",
+      title: "Cambios guardados",
+      description: "Servicio actualizado correctamente.",
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 py-10 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-400">
-            Gestión de Servicios
-          </h1>
-          <p className="text-gray-300 text-lg">Administra los servicios que ofrece tu salón</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <FiUsers className="text-blue-400 text-2xl" />
-            </div>
-            <div className="text-3xl font-bold text-white mb-1">{activeServicesCount}</div>
-            <div className="text-gray-400 text-sm">Servicios activos</div>
+    <section className="space-y-8">
+      <header className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-white/50">
+              Gestión de catálogo
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold text-white">
+              Diseña, activa y controla tus servicios
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm text-white/70">
+              Mantén tu portafolio atractivo y actualizado en cuestión de segundos.
+              Activa/desactiva servicios, edita información y conoce su rendimiento.
+            </p>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <FiDollarSign className="text-green-400 text-2xl" />
-            </div>
-            <div className="text-3xl font-bold text-white mb-1">{formatCurrency(totalRevenue)}</div>
-            <div className="text-gray-400 text-sm">Valor total servicios</div>
-          </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <FiClock className="text-orange-400 text-2xl" />
-            </div>
-            <div className="text-3xl font-bold text-white mb-1">{avgDuration}min</div>
-            <div className="text-gray-400 text-sm">Duración promedio</div>
-          </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <FiUsers className="text-purple-400 text-2xl" />
-            </div>
-            <div className="text-3xl font-bold text-white mb-1">{categories.length}</div>
-            <div className="text-gray-400 text-sm">Categorías</div>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="flex-1 relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar servicios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-          </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-          >
-            <option value="all">Todas las categorías</option>
-            {categories.map(category => (
-              <option key={category.key} value={category.key}>{category.label}</option>
-            ))}
-          </select>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-gradient-to-r from-pink-500 to-orange-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-pink-500/30 transition-all flex items-center gap-2"
+            type="button"
+            onClick={() => {
+              setEditingService(null);
+              setModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/40 transition hover:shadow-pink-500/60"
           >
-            <FiPlus /> Nuevo Servicio
+            <FaPlus className="text-sm" />
+            Registrar nuevo servicio
           </button>
         </div>
 
-        {/* Services Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredServices.map((service) => {
-            const categoryInfo = getCategoryInfo(service.category);
-            return (
-              <div key={service.id} className="bg-slate-800 rounded-xl border border-slate-700 p-6 hover:border-pink-500/50 transition-colors">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    {categoryInfo.icon}
-                    <div>
-                      <h3 className="text-white font-semibold text-lg">{service.name}</h3>
-                      <span className="text-gray-400 text-sm">{categoryInfo.label}</span>
-                    </div>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    service.isActive 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {service.isActive ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre, descripción o profesional..."
+            className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+          />
+          {error ? (
+            <p className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </header>
 
-                {/* Description */}
-                <p className="text-gray-300 text-sm mb-4">{service.description}</p>
-
-                {/* Details */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400 flex items-center gap-1">
-                      <FiClock className="text-xs" /> Duración:
-                    </span>
-                    <span className="text-white">{service.duration} min</span>
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-52 animate-pulse rounded-3xl bg-white/5" />
+          ))}
+        </div>
+      ) : filteredServices.length === 0 ? (
+        <div className="rounded-3xl border border-white/10 bg-white/5 px-6 py-10 text-center text-sm text-gray-300">
+          No hay servicios registrados con ese filtro. Agrega uno nuevo o amplía la
+          búsqueda.
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {filteredServices.map((service) => (
+            <article
+              key={service.id}
+              className="flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-xl transition hover:border-pink-400/50"
+            >
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+                      Servicio #{service.id.slice(0, 6)}
+                    </p>
+                    <h3 className="mt-1 text-xl font-semibold text-white">
+                      {service.name}
+                    </h3>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400 flex items-center gap-1">
-                      <FiDollarSign className="text-xs" /> Precio:
-                    </span>
-                    <span className="text-white font-semibold">{formatCurrency(service.price)}</span>
-                  </div>
-                </div>
-
-                {/* Provider Types */}
-                <div className="mb-4">
-                  <div className="text-gray-400 text-xs mb-1">Especialistas:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {service.providerTypes.map(type => (
-                      <span key={type} className="bg-slate-700 text-gray-300 px-2 py-1 rounded text-xs">
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleServiceStatus(service.id)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                       service.isActive
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-green-600 hover:bg-green-700 text-white'
+                        ? "border border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+                        : "border border-orange-400/40 bg-orange-500/10 text-orange-200"
                     }`}
                   >
-                    {service.isActive ? 'Desactivar' : 'Activar'}
-                  </button>
-                  <button className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-gray-300 rounded-lg transition-colors">
-                    <FiEdit3 className="text-sm" />
-                  </button>
-                  <button 
-                    onClick={() => deleteService(service.id)}
-                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                  >
-                    <FiTrash2 className="text-sm" />
-                  </button>
+                    {service.isActive ? "Activo" : "Inactivo"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-300 line-clamp-4">
+                  {service.description}
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-xs text-gray-300">
+                  <InfoChip
+                    icon={<FaMoneyBillWave className="text-base text-yellow-300" />}
+                    label="Precio"
+                    value={Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                      maximumFractionDigits: 0,
+                    }).format(service.price)}
+                  />
+                  <InfoChip
+                    icon={<FaClock className="text-base text-cyan-300" />}
+                    label="Duración"
+                    value={`${service.durationMinutes} min`}
+                  />
+                  <InfoChip
+                    icon={<FaStar className="text-base text-amber-300" />}
+                    label="Reseñas"
+                    value={
+                      service.reviewsCount > 0
+                        ? `${service.averageRating.toFixed(1)} · ${
+                            service.reviewsCount
+                          }`
+                        : "Sin reseñas"
+                    }
+                  />
+                  <InfoChip
+                    icon={<FaUserTie className="text-base text-emerald-300" />}
+                    label="Profesional"
+                    value={
+                      service.provider?.fullName ?? service.provider?.email ?? "Sin asignar"
+                    }
+                  />
                 </div>
               </div>
-            );
-          })}
+
+              <div className="mt-6 flex flex-wrap gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => toggleActiveState(service)}
+                  disabled={processingId === service.id}
+                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 font-semibold text-white transition hover:border-white/35 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {processingId === service.id
+                    ? "Actualizando..."
+                    : service.isActive
+                      ? "Desactivar"
+                      : "Activar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingService(service);
+                    setModalOpen(true);
+                  }}
+                  className="inline-flex items-center justify-center rounded-full border border-pink-400/40 px-4 py-2 font-semibold text-pink-200 transition hover:border-pink-300 hover:text-pink-100"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(service)}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-red-400/40 px-4 py-2 font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
+                >
+                  <FaTrash className="text-xs" />
+                  Eliminar
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
+      )}
 
-        {filteredServices.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-lg mb-2">No se encontraron servicios</div>
-            <p className="text-gray-500">Intenta ajustar los filtros de búsqueda</p>
-          </div>
-        )}
+      <Modal open={modalOpen} onClose={handleFormClose}>
+        <div className="space-y-4 text-white">
+          <header>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+              {editingService ? "Editar servicio" : "Nuevo servicio"}
+            </p>
+            <h3 className="text-2xl font-semibold">
+              {editingService ? editingService.name : "Publica una nueva experiencia"}
+            </h3>
+            <p className="text-sm text-gray-300">
+              Completa la información para que aparezca disponible en el portal de
+              reservas.
+            </p>
+          </header>
+          <ServiceForm
+            service={editingService ?? undefined}
+            providerOptions={providerOptions}
+            onCreated={handleCreated}
+            onUpdated={handleUpdated}
+            onClose={handleFormClose}
+          />
+        </div>
+      </Modal>
 
-        {/* Add Service Modal Placeholder */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 w-full max-w-md">
-              <h3 className="text-xl font-semibold text-white mb-4">Nuevo Servicio</h3>
-              <p className="text-gray-300 mb-4">Funcionalidad de agregar servicio en desarrollo...</p>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="w-full bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Cerrar
-              </button>
-            </div>
+      <Modal open={deleteTarget !== null} onClose={() => setDeleteTarget(null)}>
+        <div className="space-y-4 text-white">
+          <header>
+            <h3 className="text-2xl font-semibold">¿Eliminar servicio?</h3>
+            <p className="mt-1 text-sm text-gray-300">
+              Esta acción no se puede revertir. El servicio desaparecerá del listado público
+              y de las reservas activas.
+            </p>
+          </header>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200">
+            {deleteTarget?.name}
           </div>
-        )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+              disabled={processingId === deleteTarget?.id}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-red-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:shadow-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={processingId === deleteTarget?.id}
+            >
+              <FaTrash className="text-xs" />
+              {processingId === deleteTarget?.id ? "Eliminando..." : "Eliminar"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </section>
+  );
+}
+
+function InfoChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-950/40">
+        {icon}
+      </span>
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.35em] text-white/50">
+          {label}
+        </p>
+        <p className="text-xs font-semibold text-white">{value}</p>
       </div>
     </div>
   );

@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import {
   getActiveServices,
@@ -35,6 +37,8 @@ function formatTimeRange(slot: ServiceSlot): string {
 const SLOT_PAGE_SIZE = 10;
 
 export default function ReservarPage() {
+  const router = useRouter();
+  const { showToast } = useToast();
   const { user, initializing } = useAuth();
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -195,7 +199,12 @@ export default function ReservarPage() {
   const handleBooking = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) {
-      window.location.href = "/auth/login";
+      showToast({
+        variant: "info",
+        title: "Necesitamos tu sesión",
+        description: "Inicia sesión para completar tu reserva.",
+      });
+      router.push("/auth/login?redirect=/reservar");
       return;
     }
     if (!selectedService || !selectedSlot) {

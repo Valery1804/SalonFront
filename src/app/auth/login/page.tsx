@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 import { getErrorMessage } from "@/utils/error";
 
 export default function Login() {
+  const router = useRouter();
+  const { showToast } = useToast();
   const { login: loginUser, authenticating } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,11 +22,15 @@ export default function Login() {
 
     try {
       const data = await loginUser(email, password);
-      alert(`Bienvenido ${data.user.firstName}`);
+      showToast({
+        variant: "success",
+        title: `Bienvenido ${data.user.firstName ?? data.user.email}`,
+        description: "Sesión iniciada correctamente.",
+      });
       if (data.user.role === "admin") {
-        window.location.href = "/admin";
+        router.replace("/admin/inicio");
       } else {
-        window.location.href = "/";
+        router.replace("/");
       }
     } catch (caughtError: unknown) {
       setError(getErrorMessage(caughtError, "No se pudo iniciar sesion"));

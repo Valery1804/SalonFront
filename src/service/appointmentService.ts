@@ -117,3 +117,40 @@ export async function updateAppointmentStatus(
     throw new Error(extractMessage(error, "No se pudo actualizar el estado de la cita"));
   }
 }
+
+export interface AppointmentStatistics {
+  total: number;
+  pendientes: number;
+  confirmadas: number;
+  completadas: number;
+  canceladas: number;
+  noAsistio: number;
+}
+
+export async function getAppointmentsByDateRange(
+  startDate: string,
+  endDate: string,
+): Promise<Appointment[]> {
+  try {
+    const { data } = await api.get<Appointment[]>("/appointments/by-date-range", {
+      params: { startDate, endDate },
+    });
+    return data;
+  } catch (error: unknown) {
+    throw new Error(extractMessage(error, "No se pudieron cargar las citas del rango"));
+  }
+}
+
+export async function getAppointmentStatistics(
+  startDate: string,
+  endDate: string,
+): Promise<AppointmentStatistics> {
+  try {
+    const { data } = await api.get<AppointmentStatistics>("/appointments/statistics", {
+      params: { startDate, endDate },
+    });
+    return data;
+  } catch (error: unknown) {
+    throw new Error(extractMessage(error, "No se pudieron obtener las estadísticas"));
+  }
+}

@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { createService, type CreateServiceDTO } from "@/service/serviceService";
+import { useEffect, useState } from "react";
+import {
+  createService,
+  updateService,
+  type CreateServiceDTO,
+  type ServiceResponse,
+} from "@/service/serviceService";
 import { getErrorMessage } from "@/utils/error";
 
 interface ServiceFormProps {
-  onCreated?: (service: CreateServiceDTO) => void;
+  service?: ServiceResponse;
+  providerOptions?: Array<{ id: string; label: string }>;
+  onCreated?: (service: ServiceResponse) => void;
+  onUpdated?: (service: ServiceResponse) => void;
   onClose?: () => void;
 }
 
@@ -15,18 +23,52 @@ const initialForm: CreateServiceDTO = {
   price: 0,
   durationMinutes: 0,
   isActive: true,
+  providerId: null,
 };
 
-export default function ServiceForm({ onCreated, onClose }: ServiceFormProps) {
-  const [formData, setFormData] = useState<CreateServiceDTO>(initialForm);
+export default function ServiceForm({
+  service,
+  providerOptions,
+  onCreated,
+  onUpdated,
+  onClose,
+}: ServiceFormProps) {
+  const [formData, setFormData] = useState<CreateServiceDTO>(
+    service
+      ? {
+          name: service.name,
+          description: service.description,
+          price: service.price,
+          durationMinutes: service.durationMinutes,
+          isActive: service.isActive,
+          providerId: service.providerId,
+        }
+      : initialForm,
+  );
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const isEditing = Boolean(service);
+
+  useEffect(() => {
+    if (service) {
+      setFormData({
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        durationMinutes: service.durationMinutes,
+        isActive: service.isActive,
+        providerId: service.providerId,
+      });
+    }
+  }, [service]);
 
   const handleChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = event.target;
-    let normalized: string | number | boolean = value;
+    let normalized: string | number | boolean | null = value;
 
     if (event.target instanceof HTMLInputElement) {
       if (event.target.type === "checkbox") {
@@ -34,6 +76,10 @@ export default function ServiceForm({ onCreated, onClose }: ServiceFormProps) {
       } else if (event.target.type === "number") {
         normalized = Number(value);
       }
+    }
+
+    if (name === "providerId") {
+      normalized = value === "" ? null : value;
     }
 
     setFormData((prev) => ({
@@ -48,13 +94,26 @@ export default function ServiceForm({ onCreated, onClose }: ServiceFormProps) {
     setMessage("");
 
     try {
-      await createService(formData);
-      setMessage("Servicio creado exitosamente");
-      setFormData(initialForm);
-      onCreated?.(formData);
+      if (isEditing && service) {
+        const updated = await updateService(service.id, formData);
+        setMessage("Servicio actualizado correctamente");
+        onUpdated?.(updated);
+      } else {
+        const created = await createService(formData);
+        setMessage("Servicio creado exitosamente");
+        setFormData(initialForm);
+        onCreated?.(created);
+      }
       onClose?.();
     } catch (caughtError: unknown) {
-      setMessage(getErrorMessage(caughtError, "No se pudo crear el servicio"));
+      setMessage(
+        getErrorMessage(
+          caughtError,
+          isEditing
+            ? "No se pudo actualizar el servicio"
+            : "No se pudo crear el servicio",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -122,6 +181,27 @@ export default function ServiceForm({ onCreated, onClose }: ServiceFormProps) {
         </label>
       </div>
 
+      {providerOptions && providerOptions.length > 0 ? (
+        <label className="space-y-2 text-sm text-gray-300">
+          <span className="text-xs uppercase tracking-wider text-gray-400">
+            Profesional asignado
+          </span>
+          <select
+            name="providerId"
+            value={formData.providerId ?? ""}
+            onChange={handleChange}
+            className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/60"
+          >
+            <option value="">Sin asignar</option>
+            {providerOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
       <label className="space-y-2 text-sm text-gray-300">
         <span className="text-xs uppercase tracking-wider text-gray-400">Descripcion</span>
         <textarea
@@ -150,7 +230,11 @@ export default function ServiceForm({ onCreated, onClose }: ServiceFormProps) {
           disabled={loading}
           className="w-full rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-pink-500/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
-          {loading ? "Guardando..." : "Guardar servicio"}
+          {loading
+            ? "Guardando..."
+            : isEditing
+              ? "Actualizar servicio"
+              : "Guardar servicio"}
         </button>
       </div>
     </form>

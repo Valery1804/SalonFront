@@ -1,291 +1,300 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FiCalendar, FiClock, FiUser, FiPhone, FiMail, FiRefreshCw } from "react-icons/fi";
-import { getAllAppointments, updateAppointmentStatus, type Appointment as AppointmentType } from "@/service/appointmentService";
+import { useEffect, useMemo, useState } from "react";
+import {
+  getAllAppointments,
+  updateAppointmentStatus,
+  type Appointment,
+  type AppointmentStatus,
+} from "@/service/appointmentService";
+import { getErrorMessage } from "@/utils/error";
+import { useToast } from "@/providers/ToastProvider";
 
-// Mapeo de estados del backend a estados del frontend
-const statusMapping = {
-  "pendiente": "pending" as const,
-  "confirmada": "confirmed" as const,
-  "completada": "completed" as const,
-  "cancelada": "cancelled" as const,
-  "no_asistio": "cancelled" as const
+const STATUS_LABELS: Record<AppointmentStatus, string> = {
+  pendiente: "Pendiente",
+  confirmada: "Confirmada",
+  completada: "Completada",
+  cancelada: "Cancelada",
+  no_asistio: "No asistió",
 };
 
-type FrontendStatus = "confirmed" | "pending" | "completed" | "cancelled";
-
-interface ProcessedAppointment {
-  id: string;
-  clientName: string;
-  service: string;
-  time: string;
-  duration: number;
-  phone?: string;
-  email?: string;
-  status: FrontendStatus;
-  date: string;
-  originalAppointment: AppointmentType;
-}
+const STATUS_OPTIONS: Array<{ value: AppointmentStatus; comment: string }> = [
+  { value: "pendiente", comment: "Por confirmar" },
+  { value: "confirmada", comment: "En agenda" },
+  { value: "completada", comment: "Finalizada" },
+  { value: "cancelada", comment: "Cancelada" },
+  { value: "no_asistio", comment: "No asistió" },
+];
 
 export default function AdminAgenda() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [appointments, setAppointments] = useState<ProcessedAppointment[]>([]);
-  const [allAppointments, setAllAppointments] = useState<AppointmentType[]>([]);
+  const { showToast } = useToast();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-
-  const processAppointments = (rawAppointments: AppointmentType[]): ProcessedAppointment[] => {
-    return rawAppointments.map(apt => ({
-      id: apt.id,
-      clientName: apt.client ? `${apt.client.firstName} ${apt.client.lastName}` : 'Cliente desconocido',
-      service: apt.service?.name || 'Servicio desconocido',
-      time: apt.startTime,
-      duration: apt.service?.duration || 60,
-      phone: apt.client?.phone,
-      email: apt.client?.email,
-      status: statusMapping[apt.status] || 'pending',
-      date: apt.date,
-      originalAppointment: apt
-    }));
-  };
-
-  const loadAppointments = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getAllAppointments();
-      setAllAppointments(data);
-      const processed = processAppointments(data);
-      setAppointments(processed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar las citas');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStatusUpdate = async (appointmentId: string, newStatus: AppointmentType['status']) => {
-    try {
-      setUpdatingStatus(appointmentId);
-      await updateAppointmentStatus(appointmentId, newStatus);
-      // Recargar las citas después de actualizar
-      await loadAppointments();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al actualizar el estado');
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  const getStatusColor = (status: FrontendStatus) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusText = (status: FrontendStatus) => {
-    switch (status) {
-      case 'confirmed': return 'Confirmada';
-      case 'pending': return 'Pendiente';
-      case 'completed': return 'Completada';
-      case 'cancelled': return 'Cancelada';
-      default: return 'Desconocido';
-    }
-  };
-
-  // Filtrar citas por fecha seleccionada
-  const filteredAppointments = appointments.filter(apt => apt.date === selectedDate);
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "todos">(
+    "todos",
+  );
+  const [dateFilter, setDateFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAppointments();
-  }, []);
+    const loadAppointments = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const data = await getAllAppointments();
+        setAppointments(data);
+      } catch (caughtError: unknown) {
+        const message = getErrorMessage(
+          caughtError,
+          "No se pudieron cargar las citas",
+        );
+        setError(message);
+        showToast({ variant: "error", description: message });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadAppointments();
+  }, [showToast]);
+
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter((appointment) => {
+      const matchesStatus =
+        statusFilter === "todos" || appointment.status === statusFilter;
+
+      const matchesDate =
+        !dateFilter ||
+        new Date(`${appointment.date}T00:00:00`).toISOString().slice(0, 10) ===
+          dateFilter;
+
+      const searchValue = search.trim().toLowerCase();
+      const matchesSearch =
+        searchValue.length === 0 ||
+        `${appointment.client?.fullName ?? ""} ${
+          appointment.client?.email ?? ""
+        } ${appointment.service?.name ?? ""} ${
+          appointment.staff?.fullName ?? ""
+        }`
+          .toLowerCase()
+          .includes(searchValue);
+
+      return matchesStatus && matchesDate && matchesSearch;
+    });
+  }, [appointments, dateFilter, search, statusFilter]);
+
+  const changeStatus = async (appointment: Appointment, status: AppointmentStatus) => {
+    if (appointment.status === status) {
+      return;
+    }
+
+    setUpdatingId(appointment.id);
+    try {
+      const updated = await updateAppointmentStatus(appointment.id, status);
+      setAppointments((prev) =>
+        prev.map((item) => (item.id === appointment.id ? updated : item)),
+      );
+      showToast({
+        variant: "success",
+        title: "Estado actualizado",
+        description: `La cita pasó a ${STATUS_LABELS[status]}.`,
+      });
+    } catch (caughtError: unknown) {
+      const message = getErrorMessage(
+        caughtError,
+        "No se pudo actualizar la cita",
+      );
+      setError(message);
+      showToast({ variant: "error", description: message });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-900 py-10 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-400">
-            Agenda de Citas
-          </h1>
-          <p className="text-gray-300 text-lg">Gestiona las citas programadas para tu salón</p>
-        </div>
-
-        {/* Date Selector */}
-        <div className="mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <FiCalendar className="text-pink-400 text-xl" />
-            <label htmlFor="date" className="text-white font-medium">Seleccionar fecha:</label>
+    <section className="space-y-8">
+      <header className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-white/50">
+              Agenda operativa
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold text-white">
+              Control total de las citas programadas
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm text-white/70">
+              Filtra por estado, busca por cliente o servicio y actualiza cada cita en
+              segundos. Mantén sincronizado al equipo con la vista administrativa.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <input
               type="date"
-              id="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              value={dateFilter}
+              onChange={(event) => setDateFilter(event.target.value)}
+              className="w-full rounded-full border border-white/10 bg-slate-900/70 px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50 sm:w-auto"
             />
+            <div className="flex items-center rounded-full border border-white/10 bg-slate-900/70 px-3 text-sm text-white">
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as AppointmentStatus | "todos")
+                }
+                className="bg-transparent px-1 py-2 text-sm focus:outline-none"
+              >
+                <option value="todos">Todos los estados</option>
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {STATUS_LABELS[option.value]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
+        <div className="mt-4">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por cliente, servicio o staff..."
+            className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+          />
+        </div>
+        {error ? (
+          <p className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </p>
+        ) : null}
+      </header>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <div className="text-gray-400 flex items-center gap-2">
-              <FiRefreshCw className="animate-spin" />
-              Cargando citas...
-            </div>
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-xl">
+        <div className="hidden grid-cols-[1.5fr_1fr_1fr_1.2fr_1fr] gap-4 border-b border-white/10 bg-slate-900/70 px-6 py-4 text-xs font-semibold uppercase tracking-[0.3em] text-white/50 lg:grid">
+          <span>Cliente</span>
+          <span>Servicio</span>
+          <span>Staff</span>
+          <span>Fecha y hora</span>
+          <span>Estado</span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3 p-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+            ))}
           </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-8">
-            <p className="text-red-400">Error: {error}</p>
-            <button 
-              onClick={loadAppointments}
-              className="mt-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <FiRefreshCw /> Reintentar
-            </button>
+        ) : filteredAppointments.length === 0 ? (
+          <div className="px-6 py-12 text-center text-sm text-gray-300">
+            No se encontraron citas con los filtros seleccionados.
           </div>
-        )}
+        ) : (
+          <div className="divide-y divide-white/5">
+            {filteredAppointments.map((appointment) => {
+              const appointmentDate = new Date(
+                `${appointment.date}T${appointment.startTime}`,
+              );
+              const formattedDate = appointmentDate.toLocaleDateString("es-ES", {
+                weekday: "short",
+                day: "2-digit",
+                month: "short",
+              });
 
-        {/* Appointments Grid */}
-        {!loading && !error && (
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {filteredAppointments.length > 0 ? (
-              filteredAppointments.map((appointment) => (
-              <div key={appointment.id} className="bg-slate-800 rounded-xl border border-slate-700 p-6 hover:border-pink-500/50 transition-colors">
-                {/* Status Badge */}
-                <div className="flex justify-between items-start mb-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(appointment.status)}`}>
-                    {getStatusText(appointment.status)}
-                  </span>
-                  <span className="text-gray-400 text-sm">#{appointment.id}</span>
-                </div>
-
-                {/* Client Info */}
-                <div className="mb-4">
-                  <h3 className="text-white font-semibold text-lg mb-1 flex items-center gap-2">
-                    <FiUser className="text-pink-400" />
-                    {appointment.clientName}
-                  </h3>
-                  <p className="text-gray-300 font-medium">{appointment.service}</p>
-                </div>
-
-                {/* Time Info */}
-                <div className="mb-4 flex items-center gap-2 text-gray-300">
-                  <FiClock className="text-pink-400" />
-                  <span>{appointment.time} ({appointment.duration} min)</span>
-                </div>
-
-                {/* Contact Info */}
-                <div className="space-y-2">
-                  {appointment.phone && (
-                    <div className="flex items-center gap-2 text-gray-300 text-sm">
-                      <FiPhone className="text-pink-400" />
-                      <span>{appointment.phone}</span>
-                    </div>
-                  )}
-                  {appointment.email && (
-                    <div className="flex items-center gap-2 text-gray-300 text-sm">
-                      <FiMail className="text-pink-400" />
-                      <span>{appointment.email}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="mt-4 space-y-2">
-                  <div className="flex gap-2">
-                    <button className="flex-1 bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                      Ver detalles
-                    </button>
-                    <button className="px-3 py-2 border border-slate-600 hover:border-slate-500 text-gray-300 rounded-lg text-sm transition-colors">
-                      Editar
-                    </button>
+              return (
+                <div
+                  key={appointment.id}
+                  className="grid gap-4 px-6 py-4 text-sm text-gray-200 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr_1fr]"
+                >
+                  <div>
+                    <p className="font-semibold text-white">
+                      {appointment.client?.fullName ??
+                        appointment.client?.email ??
+                        "Cliente sin nombre"}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {appointment.client?.email ?? "Sin correo registrado"}
+                    </p>
                   </div>
-                  
-                  {/* Status Update Buttons */}
-                  {appointment.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleStatusUpdate(appointment.id, 'confirmada')}
-                        disabled={updatingStatus === appointment.id}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                      >
-                        {updatingStatus === appointment.id ? 'Actualizando...' : 'Confirmar'}
-                      </button>
-                      <button 
-                        onClick={() => handleStatusUpdate(appointment.id, 'cancelada')}
-                        disabled={updatingStatus === appointment.id}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                      >
-                        Cancelar
-                      </button>
+                  <div>
+                    <p className="font-semibold text-white">
+                      {appointment.service?.name ?? "Servicio"}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {appointment.service
+                        ? `${appointment.service.durationMinutes} min`
+                        : "Sin duración"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">
+                      {appointment.staff?.fullName ??
+                        appointment.staff?.email ??
+                        "Staff pendiente"}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {appointment.staff?.providerType
+                        ? appointment.staff.providerType.replace("_", " ")
+                        : "Sin especialidad"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">
+                      {appointment.startTime.slice(0, 5)} · {formattedDate}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Creada el{" "}
+                      {new Date(appointment.createdAt).toLocaleDateString(
+                        "es-ES",
+                        {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        },
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 lg:items-end">
+                    <span className="inline-flex items-center justify-center rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                      {STATUS_LABELS[appointment.status]}
+                    </span>
+                    <select
+                      value={appointment.status}
+                      onChange={(event) =>
+                        void changeStatus(
+                          appointment,
+                          event.target.value as AppointmentStatus,
+                        )
+                      }
+                      disabled={updatingId === appointment.id}
+                      className="rounded-full border border-white/15 bg-slate-950/60 px-3 py-2 text-xs uppercase tracking-wide text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {STATUS_LABELS[option.value]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {appointment.notes ? (
+                    <div className="lg:col-span-5">
+                      <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-gray-300">
+                        Nota del cliente: {appointment.notes}
+                      </p>
                     </div>
-                  )}
-                  
-                  {appointment.status === 'confirmed' && (
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleStatusUpdate(appointment.id, 'completada')}
-                        disabled={updatingStatus === appointment.id}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                      >
-                        {updatingStatus === appointment.id ? 'Actualizando...' : 'Completar'}
-                      </button>
-                      <button 
-                        onClick={() => handleStatusUpdate(appointment.id, 'no_asistio')}
-                        disabled={updatingStatus === appointment.id}
-                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                      >
-                        No asistió
-                      </button>
+                  ) : null}
+                  {appointment.cancellationReason ? (
+                    <div className="lg:col-span-5">
+                      <p className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+                        Motivo de cancelación: {appointment.cancellationReason}
+                      </p>
                     </div>
-                  )}
+                  ) : null}
                 </div>
-              </div>
-            ))
-            ) : (
-              <div className="col-span-full">
-                <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
-                  <FiCalendar className="mx-auto text-6xl text-gray-500 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-300 mb-2">No hay citas programadas</h3>
-                  <p className="text-gray-500">No se encontraron citas para la fecha seleccionada.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Summary Stats */}
-        {!loading && !error && (
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-              <div className="text-2xl font-bold text-green-400">{filteredAppointments.filter(a => a.status === 'confirmed').length}</div>
-              <div className="text-gray-400 text-sm">Confirmadas</div>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-              <div className="text-2xl font-bold text-yellow-400">{filteredAppointments.filter(a => a.status === 'pending').length}</div>
-              <div className="text-gray-400 text-sm">Pendientes</div>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-              <div className="text-2xl font-bold text-blue-400">{filteredAppointments.filter(a => a.status === 'completed').length}</div>
-              <div className="text-gray-400 text-sm">Completadas</div>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-              <div className="text-2xl font-bold text-pink-400">{filteredAppointments.length}</div>
-              <div className="text-gray-400 text-sm">Total hoy</div>
-            </div>
+              );
+            })}
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

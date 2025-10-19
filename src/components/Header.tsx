@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FaUser } from "react-icons/fa";
 import { FiMenu, FiX } from "react-icons/fi";
 import ProfilePanel from "./ProfilePanel";
 import Modal from "./Modal";
 import { useAuth } from "@/providers/AuthProvider";
+import { useToast } from "@/providers/ToastProvider";
 interface NavItem {
   key: string;
   label: string;
@@ -17,6 +18,8 @@ interface NavItem {
 }
 
 export default function Header() {
+  const router = useRouter();
+  const { showToast } = useToast();
   const { user, logout, initializing } = useAuth();
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -133,7 +136,12 @@ export default function Header() {
     logout();
     setProfileOpen(false);
     setMobileOpen(false);
-    window.location.href = "/";
+    showToast({
+      title: "Sesión cerrada",
+      description: "Esperamos verte pronto.",
+      variant: "info",
+    });
+    router.replace("/");
   };
 
   const renderNavLink = (link: NavItem, variant: "desktop" | "mobile") => {

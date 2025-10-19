@@ -8,6 +8,7 @@ export interface CreateServiceDTO {
   price: number;
   durationMinutes: number;
   isActive: boolean;
+  providerId?: string | null;
 }
 
 export interface ServiceResponse {
@@ -76,5 +77,32 @@ export async function updateService(
       throw new Error("Ya existe un servicio con ese nombre");
     }
     throw new Error("No se pudo actualizar el servicio");
+  }
+}
+
+export async function deleteService(serviceId: string): Promise<void> {
+  try {
+    await api.delete(`/services/${serviceId}`);
+  } catch (error: unknown) {
+    const axiosError = getAxiosError(error);
+    const status = axiosError?.response?.status;
+    if (status === 404) {
+      throw new Error("Servicio no encontrado");
+    }
+    throw new Error("No se pudo eliminar el servicio");
+  }
+}
+
+export async function getServiceById(serviceId: string): Promise<ServiceResponse> {
+  try {
+    const { data } = await api.get<ServiceResponse>(`/services/${serviceId}`);
+    return data;
+  } catch (error: unknown) {
+    const axiosError = getAxiosError(error);
+    const status = axiosError?.response?.status;
+    if (status === 404) {
+      throw new Error("Servicio no encontrado");
+    }
+    throw new Error("No se pudo cargar el servicio");
   }
 }
