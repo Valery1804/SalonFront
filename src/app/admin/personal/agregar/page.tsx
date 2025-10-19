@@ -86,7 +86,7 @@ export default function AgregarPersonal() {
     } catch (err: unknown) {
       setError(getErrorMessage(err, "No se pudo registrar el personal"));
     } finally {
-      setLoading(false);
+  setLoading(false);
     }
   };
 
