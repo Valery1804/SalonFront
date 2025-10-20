@@ -5,16 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/providers/AuthProvider";
+import { FaCalendarAlt, FaClock, FaChartLine } from "react-icons/fa";
 
 const NAV_ITEMS = [
-  { href: "/admin/inicio", label: "Resumen" },
-  { href: "/admin/agenda", label: "Agenda" },
-  { href: "/admin/servicios", label: "Servicios" },
-  { href: "/admin/personal", label: "Personal" },
-  { href: "/admin/reportes", label: "Reportes" },
+  { href: "/prestador/mis-citas", label: "Mis Citas", icon: FaCalendarAlt },
+  { href: "/prestador/horarios", label: "Mis Horarios", icon: FaClock },
+  { href: "/prestador/estadisticas", label: "Estadísticas", icon: FaChartLine },
 ];
 
-export default function AdminLayout({
+export default function PrestadorLayout({
   children,
 }: {
   children: ReactNode;
@@ -26,15 +25,15 @@ export default function AdminLayout({
   useEffect(() => {
     if (!initializing) {
       if (!user) {
-        router.replace("/auth/login?redirect=/admin/inicio");
-      } else if (user.role !== "admin") {
+        router.replace("/auth/login?redirect=/prestador/mis-citas");
+      } else if (user.role !== "prestador_servicio") {
         router.replace("/");
       }
     }
   }, [initializing, router, user]);
 
   const isAllowed = useMemo(
-    () => Boolean(user && user.role === "admin"),
+    () => Boolean(user && user.role === "prestador_servicio"),
     [user],
   );
 
@@ -53,11 +52,11 @@ export default function AdminLayout({
           Acceso restringido
         </p>
         <h1 className="text-3xl font-semibold">
-          Necesitas privilegios de administrador
+          Solo para Prestadores de Servicio
         </h1>
         <p className="max-w-md text-sm text-white/70">
-          Inicia sesión con una cuenta autorizada para administrar el panel del
-          salón. Si crees que se trata de un error, contacta al equipo técnico.
+          Esta sección está reservada para profesionales del salón. Inicia sesión
+          con una cuenta de prestador de servicio.
         </p>
         <div className="flex flex-wrap justify-center gap-3 text-sm">
           <Link
@@ -70,7 +69,7 @@ export default function AdminLayout({
             href="/auth/login"
             className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-2 font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50"
           >
-            Cambiar de cuenta
+            Iniciar sesión
           </Link>
         </div>
       </div>
@@ -83,25 +82,32 @@ export default function AdminLayout({
         <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-pink-300">
-              Panel SalonClick
+              Panel de Prestador
             </p>
             <h1 className="text-2xl font-semibold text-white">
-              Bienvenido, {user?.firstName ?? user?.email ?? "Admin"}
+              Hola, {user?.firstName ?? user?.email ?? "Profesional"}
             </h1>
+            {user?.providerType && (
+              <p className="mt-1 text-xs text-gray-400 capitalize">
+                {user.providerType.replace("_", " ")}
+              </p>
+            )}
           </div>
           <nav className="flex flex-wrap gap-2">
             {NAV_ITEMS.map((item) => {
               const active = pathname === item.href;
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  className={`group inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
                     active
                       ? "border-yellow-400/60 bg-yellow-400/20 text-white shadow-lg shadow-yellow-300/20"
                       : "border-white/10 text-gray-200 hover:border-pink-400/60 hover:text-pink-200"
                   }`}
                 >
+                  <Icon className="text-sm" />
                   {item.label}
                 </Link>
               );

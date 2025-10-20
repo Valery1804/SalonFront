@@ -2,6 +2,9 @@ import api from "./api";
 import { getAxiosError } from "@/utils/error";
 import type { ProviderType, User, UserRole } from "@/types/user";
 
+// Re-export types for external use
+export type { User, UserRole, ProviderType } from "@/types/user";
+
 export interface CreateUserDTO {
   email: string;
   password: string;

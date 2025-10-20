@@ -114,3 +114,18 @@ export async function getAvailableSlotsByService(
     throw new Error("No se pudo obtener la disponibilidad");
   }
 }
+
+export async function deleteServiceSlot(slotId: string): Promise<void> {
+  try {
+    await api.delete(`/service-slots/${slotId}`);
+  } catch (error: unknown) {
+    const axiosError = getAxiosError<ApiErrorResponse>(error);
+    const message =
+      axiosError?.response?.data?.message ??
+      axiosError?.message ??
+      "Error al eliminar el slot";
+    throw new Error(
+      Array.isArray(message) ? message.join(", ") : String(message),
+    );
+  }
+}
