@@ -135,9 +135,19 @@ export default function PersonalSalon() {
                     className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl transition hover:border-pink-400/50 hover:shadow-pink-500/20"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-                        {meta?.icon ?? <FaUserTie className="text-3xl text-pink-400" />}
-                      </div>
+                      {provider.profileImage ? (
+                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border-2 border-pink-400/30 shadow-lg">
+                          <img
+                            src={provider.profileImage}
+                            alt={provider.fullName || `${provider.firstName} ${provider.lastName}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                          {meta?.icon ?? <FaUserTie className="text-3xl text-pink-400" />}
+                        </div>
+                      )}
                       <div>
                         <h2 className="text-xl font-semibold text-white">
                           {provider.fullName || `${provider.firstName} ${provider.lastName}`}

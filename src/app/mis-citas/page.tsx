@@ -298,18 +298,35 @@ export default function MisCitas() {
                           className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl transition hover:border-pink-400/50"
                         >
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <h3 className="text-lg font-semibold text-white">
-                                {appointment.service?.name ?? "Servicio"}
-                              </h3>
-                              <p className="mt-1 text-sm text-gray-300">
-                                {formatAppointmentDate(appointment.date, appointment.startTime)}
-                              </p>
-                              <p className="mt-1 text-xs uppercase tracking-wider text-gray-400">
-                                {appointment.service?.provider?.fullName
-                                  ? `Con ${appointment.service.provider.fullName}`
-                                  : "Personal asignado"}
-                              </p>
+                            <div className="flex gap-3">
+                              {appointment.service?.provider?.profileImage ? (
+                                <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border-2 border-pink-400/30">
+                                  <img
+                                    src={appointment.service.provider.profileImage}
+                                    alt={appointment.service.provider.fullName || "Prestador"}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              ) : appointment.service?.provider ? (
+                                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border-2 border-white/10 bg-gradient-to-br from-pink-500/20 to-orange-400/20">
+                                  <span className="text-lg font-bold text-white">
+                                    {appointment.service.provider.firstName?.[0]?.toUpperCase() || "?"}
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div>
+                                <h3 className="text-lg font-semibold text-white">
+                                  {appointment.service?.name ?? "Servicio"}
+                                </h3>
+                                <p className="mt-1 text-sm text-gray-300">
+                                  {formatAppointmentDate(appointment.date, appointment.startTime)}
+                                </p>
+                                <p className="mt-1 text-xs uppercase tracking-wider text-gray-400">
+                                  {appointment.service?.provider?.fullName
+                                    ? `Con ${appointment.service.provider.fullName}`
+                                    : "Personal asignado"}
+                                </p>
+                              </div>
                             </div>
                             <span
                               className={`inline-flex h-9 items-center rounded-full border px-4 text-xs font-semibold uppercase tracking-wider ${STATUS_STYLES[appointment.status]}`}
@@ -377,18 +394,35 @@ export default function MisCitas() {
                           className="rounded-3xl border border-white/10 bg-slate-900/60 p-5 text-sm text-gray-200"
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <h3 className="text-base font-semibold text-white">
-                                {appointment.service?.name ?? "Servicio"}
-                              </h3>
-                              <p className="text-xs uppercase tracking-wider text-gray-400">
-                                {formatAppointmentDate(appointment.date, appointment.startTime)}
-                              </p>
-                              {appointment.cancellationReason && (
-                                <p className="mt-2 text-xs text-red-200">
-                                  Motivo de cancelacion: {appointment.cancellationReason}
+                            <div className="flex gap-3">
+                              {appointment.service?.provider?.profileImage ? (
+                                <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-pink-400/30">
+                                  <img
+                                    src={appointment.service.provider.profileImage}
+                                    alt={appointment.service.provider.fullName || "Prestador"}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              ) : appointment.service?.provider ? (
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border border-white/10 bg-gradient-to-br from-pink-500/20 to-orange-400/20">
+                                  <span className="text-sm font-bold text-white">
+                                    {appointment.service.provider.firstName?.[0]?.toUpperCase() || "?"}
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div>
+                                <h3 className="text-base font-semibold text-white">
+                                  {appointment.service?.name ?? "Servicio"}
+                                </h3>
+                                <p className="text-xs uppercase tracking-wider text-gray-400">
+                                  {formatAppointmentDate(appointment.date, appointment.startTime)}
                                 </p>
-                              )}
+                                {appointment.cancellationReason && (
+                                  <p className="mt-2 text-xs text-red-200">
+                                    Motivo de cancelacion: {appointment.cancellationReason}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             <span
                               className={`inline-flex h-8 items-center rounded-full border px-3 text-[0.65rem] font-semibold uppercase tracking-wider ${STATUS_STYLES[appointment.status]}`}

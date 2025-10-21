@@ -13,6 +13,7 @@ export interface CreateUserDTO {
   phone?: string;
   role?: UserRole;
   providerType?: ProviderType;
+  profileImage?: string;
 }
 
 export type UserResponse = User;
@@ -24,6 +25,7 @@ export interface UpdateUserDTO {
   phone?: string;
   role?: UserRole;
   providerType?: ProviderType | null;
+  profileImage?: string;
   isActive?: boolean;
   emailVerificationToken?: string;
 }
@@ -35,6 +37,7 @@ export interface UpdateProfileDTO {
   phone?: string;
   role?: UserRole;
   providerType?: ProviderType | null;
+  profileImage?: string;
   isActive?: boolean;
   emailVerificationToken?: string;
 }

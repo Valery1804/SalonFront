@@ -350,10 +350,27 @@ function ServicesSection({
                     <span className="rounded-full border border-white/10 px-3 py-1">
                       Duracion {service.durationMinutes} min
                     </span>
-                    {service.provider?.fullName && (
-                      <span className="rounded-full border border-white/10 px-3 py-1">
-                        {service.provider.fullName}
-                      </span>
+                    {service.provider && (
+                      <div className="ml-auto flex items-center gap-2">
+                        {service.provider.profileImage ? (
+                          <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full border border-pink-400/30">
+                            <img
+                              src={service.provider.profileImage}
+                              alt={service.provider.fullName || "Prestador"}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-pink-500/20 to-orange-400/20">
+                            <span className="text-[0.6rem] font-bold text-white">
+                              {service.provider.firstName?.[0]?.toUpperCase() || "?"}
+                            </span>
+                          </div>
+                        )}
+                        <span className="text-xs text-gray-300">
+                          {service.provider.fullName}
+                        </span>
+                      </div>
                     )}
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
