@@ -42,8 +42,22 @@ export async function register(dataUser: RegisterPayload): Promise<AuthResponse>
     return data;
   } catch (error: unknown) {
     const axiosError = getAxiosError(error);
-    if (axiosError?.response?.status === 409) {
+    const status = axiosError?.response?.status;
+    const message = (axiosError?.response?.data as { message?: string | string[] })?.message;
+
+    // Mostrar mensaje específico del backend si está disponible
+    if (status === 409) {
       throw new Error("El email ya esta registrado");
+    }
+    if (status === 400) {
+      // Si el backend envía un mensaje específico, úsalo
+      if (message) {
+        if (Array.isArray(message)) {
+          throw new Error(message[0]); // ValidationPipe devuelve array de errores
+        }
+        throw new Error(message);
+      }
+      throw new Error("Los datos proporcionados no son válidos. Revisa los campos.");
     }
 
     throw new Error("Error al registrar usuario");

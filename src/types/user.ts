@@ -15,6 +15,7 @@ export interface User {
   phone: string | null;
   role: UserRole;
   providerType: ProviderType | null;
+  profileImage?: string | null;
   isActive: boolean;
   emailVerified: boolean;
   createdAt: string;

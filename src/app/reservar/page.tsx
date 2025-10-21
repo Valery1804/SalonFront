@@ -353,12 +353,31 @@ export default function ReservarPage() {
                           <p className="mt-2 line-clamp-3 text-xs text-gray-300">
                             {service.description}
                           </p>
-                          <div className="mt-3 flex flex-wrap gap-2 text-[0.7rem] uppercase tracking-wider text-gray-400">
-                            <span>{service.durationMinutes} min</span>
-                            {service.provider?.fullName && (
-                              <span className="rounded-full border border-white/20 px-2 py-1">
-                                {service.provider.fullName}
-                              </span>
+                          <div className="mt-3 flex items-center gap-3">
+                            <div className="flex flex-wrap gap-2 text-[0.7rem] uppercase tracking-wider text-gray-400">
+                              <span>{service.durationMinutes} min</span>
+                            </div>
+                            {service.provider && (
+                              <div className="ml-auto flex items-center gap-2">
+                                {service.provider.profileImage ? (
+                                  <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-pink-400/30">
+                                    <img
+                                      src={service.provider.profileImage}
+                                      alt={service.provider.fullName || "Prestador"}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-pink-500/20 to-orange-400/20">
+                                    <span className="text-xs font-bold text-white">
+                                      {service.provider.firstName?.[0]?.toUpperCase() || service.provider.email?.[0]?.toUpperCase() || "?"}
+                                    </span>
+                                  </div>
+                                )}
+                                <span className="text-xs text-gray-300">
+                                  {service.provider.fullName}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </button>

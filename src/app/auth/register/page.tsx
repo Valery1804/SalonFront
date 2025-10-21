@@ -8,6 +8,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useToast } from "@/providers/ToastProvider";
 import { register } from "@/service/authService";
 import { getErrorMessage } from "@/utils/error";
+import PasswordRequirements, { usePasswordValidation } from "@/components/ui/PasswordRequirements";
 
 interface RegisterForm {
   email: string;
@@ -20,8 +21,6 @@ interface RegisterForm {
 
 const fields: Array<keyof RegisterForm> = [
   "email",
-  "password",
-  "confirmPassword",
   "firstName",
   "lastName",
   "phone",
@@ -50,6 +49,8 @@ export default function Register() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { isValid: isPasswordValid } = usePasswordValidation(form.password);
+  const { isValid: isConfirmPasswordValid } = usePasswordValidation(form.confirmPassword);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -64,6 +65,34 @@ export default function Register() {
     event.preventDefault();
     setError("");
     setLoading(true);
+
+    // Validar que la contraseña cumpla con los requisitos
+    if (!isPasswordValid) {
+      setError("La contraseña no cumple con los requisitos de complejidad");
+      setLoading(false);
+      return;
+    }
+
+    // Validar que la confirmación también cumpla con los requisitos
+    if (!isConfirmPasswordValid) {
+      setError("La confirmación de contraseña no cumple con los requisitos de complejidad");
+      setLoading(false);
+      return;
+    }
+
+    // Validar que las contraseñas coincidan
+    if (form.password !== form.confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      setLoading(false);
+      return;
+    }
+
+    // Validar formato de teléfono si se proporciona
+    if (form.phone && !/^\+?[1-9]\d{1,14}$/.test(form.phone)) {
+      setError("El formato del teléfono no es válido. Ejemplo: +1234567890");
+      setLoading(false);
+      return;
+    }
 
     try {
       const data = await register(form);
@@ -117,13 +146,7 @@ export default function Register() {
             <input
               id={field}
               name={field}
-              type={
-                field.includes("password")
-                  ? "password"
-                  : field === "email"
-                    ? "email"
-                    : "text"
-              }
+              type={field === "email" ? "email" : "text"}
               value={form[field]}
               onChange={handleChange}
               required={field !== "phone"}
@@ -131,6 +154,64 @@ export default function Register() {
             />
           </div>
         ))}
+
+        <div className="space-y-2">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-200">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={handleChange}
+            required
+            className={inputClass}
+          />
+        </div>
+
+        {form.password && (
+          <PasswordRequirements password={form.password} />
+        )}
+
+        <div className="space-y-2">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-200">
+            Confirm Password
+          </label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            value={form.confirmPassword}
+            onChange={handleChange}
+            required
+            className={inputClass}
+          />
+        </div>
+
+        {form.confirmPassword && (
+          <div className="space-y-2">
+            <PasswordRequirements password={form.confirmPassword} />
+            {form.password && form.confirmPassword && (
+              <div
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+                  form.password === form.confirmPassword
+                    ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+                    : "border-orange-400/40 bg-orange-500/10 text-orange-200"
+                }`}
+              >
+                <span className="text-lg">
+                  {form.password === form.confirmPassword ? "✓" : "✗"}
+                </span>
+                <span>
+                  {form.password === form.confirmPassword
+                    ? "Las contraseñas coinciden"
+                    : "Las contraseñas no coinciden"}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {error ? (
           <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
@@ -140,7 +221,7 @@ export default function Register() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !isPasswordValid || !isConfirmPasswordValid || form.password !== form.confirmPassword}
           className="w-full rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/40 transition hover:shadow-pink-500/60 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Registrando..." : "Registrarse"}

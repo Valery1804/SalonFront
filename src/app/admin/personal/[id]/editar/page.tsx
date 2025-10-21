@@ -1,11 +1,10 @@
 "use client";
-import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useToast } from "@/providers/ToastProvider";
-import { createUser } from "@/service/userService";
+import { getUserById, updateUser } from "@/service/userService";
 import { getErrorMessage } from "@/utils/error";
-import type { ProviderType, UserRole } from "@/types/user";
-import PasswordRequirements, { usePasswordValidation } from "@/components/ui/PasswordRequirements";
+import type { ProviderType, UserRole, User } from "@/types/user";
 
 const roles = [
   { value: "prestador_servicio", label: "Prestador de servicio" },
@@ -19,42 +18,66 @@ const providerTypes = [
 ];
 
 type FormState = {
-  email: string;
-  password: string;
-  confirmPassword: string;
   firstName: string;
   lastName: string;
   phone: string;
   role: UserRole;
   providerType: ProviderType;
   profileImage: string;
+  isActive: boolean;
 };
 
-const initialFormState: FormState = {
-  email: "",
-  password: "",
-  confirmPassword: "",
-  firstName: "",
-  lastName: "",
-  phone: "",
-  role: "prestador_servicio",
-  providerType: "barbero",
-  profileImage: "",
-};
-
-type TextFieldName = Exclude<keyof FormState, "role" | "providerType" | "profileImage">;
+type TextFieldName = Exclude<keyof FormState, "role" | "providerType" | "profileImage" | "isActive">;
 type FormFieldEvent = ChangeEvent<HTMLInputElement | HTMLSelectElement>;
 
-export default function AgregarPersonal() {
+export default function EditarPersonal() {
   const router = useRouter();
+  const params = useParams();
+  const userId = params.id as string;
   const { showToast } = useToast();
-  const [form, setForm] = useState<FormState>({ ...initialFormState });
+  const [user, setUser] = useState<User | null>(null);
+  const [form, setForm] = useState<FormState>({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    role: "prestador_servicio",
+    providerType: "barbero",
+    profileImage: "",
+    isActive: true,
+  });
   const [loading, setLoading] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
-  const { isValid: isPasswordValid } = usePasswordValidation(form.password);
-  const { isValid: isConfirmPasswordValid } = usePasswordValidation(form.confirmPassword);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const userData = await getUserById(userId);
+        setUser(userData);
+        setForm({
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          phone: userData.phone || "",
+          role: userData.role,
+          providerType: userData.providerType || "barbero",
+          profileImage: userData.profileImage || "",
+          isActive: userData.isActive,
+        });
+        if (userData.profileImage) {
+          setImagePreview(userData.profileImage);
+        }
+      } catch (err: unknown) {
+        const message = getErrorMessage(err, "No se pudo cargar el usuario");
+        setError(message);
+        showToast({ variant: "error", description: message });
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    void loadUser();
+  }, [userId, showToast]);
 
   const handleChange = (event: FormFieldEvent) => {
     const { name, value } = event.target;
@@ -68,6 +91,10 @@ export default function AgregarPersonal() {
         return { ...prev, providerType: value as ProviderType };
       }
 
+      if (name === "isActive") {
+        return { ...prev, isActive: (event.target as HTMLInputElement).checked };
+      }
+
       return {
         ...prev,
         [name as TextFieldName]: value,
@@ -78,8 +105,6 @@ export default function AgregarPersonal() {
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
-      setImagePreview("");
-      setForm((prev) => ({ ...prev, profileImage: "" }));
       return;
     }
 
@@ -109,64 +134,76 @@ export default function AgregarPersonal() {
     reader.readAsDataURL(file);
   };
 
+  const handleRemoveImage = () => {
+    setImagePreview("");
+    setForm((prev) => ({ ...prev, profileImage: "" }));
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    setSuccess(null);
     setLoading(true);
 
-    // Validar que la contraseña cumpla con los requisitos
-    if (!isPasswordValid) {
-      setError("La contraseña no cumple con los requisitos de complejidad");
-      setLoading(false);
-      return;
-    }
-
-    // Validar que la confirmación también cumpla con los requisitos
-    if (!isConfirmPasswordValid) {
-      setError("La confirmación de contraseña no cumple con los requisitos de complejidad");
-      setLoading(false);
-      return;
-    }
-
-    // Validar que las contraseñas coincidan
-    if (form.password !== form.confirmPassword) {
-      setError("Las contraseñas no coinciden");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Enviar solo los campos necesarios (sin confirmPassword)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { confirmPassword, ...userData } = form;
-      await createUser(userData);
-      setSuccess("Personal registrado exitosamente");
-      setForm({ ...initialFormState });
-      setImagePreview("");
+      const updated = await updateUser(userId, {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        phone: form.phone || undefined,
+        role: form.role,
+        providerType: form.providerType,
+        profileImage: form.profileImage || undefined,
+        isActive: form.isActive,
+      });
       showToast({
         variant: "success",
-        title: "Nuevo integrante agregado",
-        description: "El personal fue registrado correctamente.",
+        title: "Usuario actualizado",
+        description: "Los datos del personal fueron actualizados correctamente.",
       });
-      router.replace("/admin/personal");
+      router.push("/admin/personal");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "No se pudo registrar el personal"));
+      const message = getErrorMessage(err, "No se pudo actualizar el usuario");
+      setError(message);
+      showToast({ variant: "error", description: message });
     } finally {
       setLoading(false);
     }
   };
 
+  if (loadingUser) {
+    return (
+      <section className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-white shadow-2xl backdrop-blur">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-64 rounded bg-white/10" />
+          <div className="h-4 w-96 rounded bg-white/10" />
+          <div className="mt-8 space-y-4">
+            <div className="h-12 rounded-xl bg-white/10" />
+            <div className="h-12 rounded-xl bg-white/10" />
+            <div className="h-12 rounded-xl bg-white/10" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <section className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-white shadow-2xl backdrop-blur">
+        <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-white shadow-2xl backdrop-blur">
       <header className="mb-8 space-y-3 text-center sm:text-left">
         <p className="text-xs uppercase tracking-[0.4em] text-pink-300">
-          Alta de personal
+          Editar personal
         </p>
-        <h1 className="text-3xl font-semibold">Registra nuevos especialistas</h1>
+        <h1 className="text-3xl font-semibold">Actualizar información</h1>
         <p className="text-sm text-white/70">
-          Completa los datos esenciales para habilitar su acceso al panel administrativo y
-          asignar su rol dentro del salón.
+          Modifica los datos del personal: {user?.fullName || user?.email}
         </p>
       </header>
 
@@ -199,76 +236,23 @@ export default function AgregarPersonal() {
 
         <LabeledField label="Correo electrónico">
           <input
-            name="email"
             type="email"
-            required
-            value={form.email}
-            onChange={handleChange}
-            className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+            disabled
+            value={user?.email}
+            className="w-full rounded-xl border border-white/10 bg-slate-950/30 px-4 py-3 text-sm text-white/50 cursor-not-allowed"
           />
+          <p className="mt-1 text-xs text-white/40">El correo no se puede modificar</p>
         </LabeledField>
 
         <LabeledField label="Teléfono">
           <input
             name="phone"
             type="text"
-            required
             value={form.phone}
             onChange={handleChange}
             className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
           />
         </LabeledField>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <LabeledField label="Contraseña provisional">
-            <input
-              name="password"
-              type="password"
-              required
-              value={form.password}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
-            />
-          </LabeledField>
-          <LabeledField label="Confirmar contraseña">
-            <input
-              name="confirmPassword"
-              type="password"
-              required
-              value={form.confirmPassword}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
-            />
-          </LabeledField>
-        </div>
-
-        {form.password && (
-          <PasswordRequirements password={form.password} />
-        )}
-
-        {form.confirmPassword && (
-          <div className="space-y-3">
-            <PasswordRequirements password={form.confirmPassword} />
-            {form.password && form.confirmPassword && (
-              <div
-                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
-                  form.password === form.confirmPassword
-                    ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-                    : "border-orange-400/40 bg-orange-500/10 text-orange-200"
-                }`}
-              >
-                <span className="text-lg">
-                  {form.password === form.confirmPassword ? "✓" : "✗"}
-                </span>
-                <span>
-                  {form.password === form.confirmPassword
-                    ? "Las contraseñas coinciden"
-                    : "Las contraseñas no coinciden"}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <LabeledField label="Rol">
@@ -310,7 +294,7 @@ export default function AgregarPersonal() {
               className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white file:mr-4 file:rounded-lg file:border-0 file:bg-pink-500/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-pink-200 hover:file:bg-pink-500/30 focus:outline-none focus:ring-2 focus:ring-pink-400/50"
             />
             {imagePreview && (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-3">
                 <div className="relative h-32 w-32 overflow-hidden rounded-2xl border-2 border-pink-400/30 shadow-lg">
                   <img
                     src={imagePreview}
@@ -318,6 +302,13 @@ export default function AgregarPersonal() {
                     className="h-full w-full object-cover"
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="text-xs text-red-300 hover:text-red-200 transition"
+                >
+                  Eliminar imagen
+                </button>
               </div>
             )}
             <p className="text-xs text-white/50">
@@ -326,14 +317,22 @@ export default function AgregarPersonal() {
           </div>
         </LabeledField>
 
+        <LabeledField label="Estado">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="isActive"
+              checked={form.isActive}
+              onChange={handleChange}
+              className="h-5 w-5 rounded border-white/20 bg-slate-950/60 text-pink-500 focus:ring-2 focus:ring-pink-400/50"
+            />
+            <span className="text-sm text-white">Usuario activo</span>
+          </label>
+        </LabeledField>
+
         {error ? (
           <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
-          </p>
-        ) : null}
-        {success ? (
-          <p className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {success}
           </p>
         ) : null}
 
@@ -348,10 +347,10 @@ export default function AgregarPersonal() {
           </button>
           <button
             type="submit"
-            disabled={loading || !isPasswordValid || !isConfirmPasswordValid || form.password !== form.confirmPassword}
+            disabled={loading}
             className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/40 transition hover:shadow-pink-500/60 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Registrando..." : "Registrar personal"}
+            {loading ? "Actualizando..." : "Guardar cambios"}
           </button>
         </div>
       </form>
