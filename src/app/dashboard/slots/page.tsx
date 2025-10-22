@@ -224,261 +224,269 @@ export default function ServiceSlotsDashboard() {
   }
 
   return (
-    <section className="max-w-6xl mx-auto p-6 space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold mb-2">Gestion de Slots</h1>
-        <p className="text-gray-300">
-          Genera tu agenda diaria y administra la disponibilidad de cada slot.
-        </p>
-      </header>
-
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/40 text-red-300 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div className="bg-green-500/10 border border-green-500/40 text-green-300 px-4 py-3 rounded">
-          {message}
-        </div>
-      )}
-
-      <section className="bg-slate-800/60 border border-white/10 rounded-lg p-6 shadow-lg space-y-4">
-        <h2 className="text-xl font-semibold">Generar nuevos slots</h2>
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleGenerate}>
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-gray-300">Servicio</span>
-            <select
-              name="serviceId"
-              value={form.serviceId}
-              onChange={handleFormChange}
-              className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-              required
-              disabled={loadingServices}
-            >
-              <option value="">Selecciona un servicio</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} - {service.durationMinutes} min
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-gray-300">Fecha</span>
-            <input
-              type="date"
-              name="date"
-              value={form.date}
-              onChange={handleFormChange}
-              className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-              required
-            />
-          </label>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-gray-300">Hora de inicio</span>
-            <input
-              type="time"
-              name="startTime"
-              value={form.startTime}
-              onChange={handleFormChange}
-              className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-              required
-            />
-          </label>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-gray-300">Hora de fin</span>
-            <input
-              type="time"
-              name="endTime"
-              value={form.endTime}
-              onChange={handleFormChange}
-              className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-              required
-            />
-          </label>
-
-          <label className="flex flex-col gap-2 md:col-span-2">
-            <span className="text-sm text-gray-300">
-              Duracion por slot (opcional, en minutos)
-            </span>
-            <input
-              type="number"
-              name="durationMinutes"
-              min={5}
-              value={form.durationMinutes}
-              onChange={handleFormChange}
-              placeholder="Se usara la Duracion del servicio si lo dejas vacio"
-              className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-            />
-          </label>
-
-          <div className="md:col-span-2 flex justify-end">
-            <button
-              type="submit"
-              disabled={generating || loadingServices}
-              className="bg-gradient-to-r from-pink-500 to-orange-400 text-white px-6 py-2 rounded-full text-sm font-medium hover:shadow-lg hover:shadow-pink-500/30 transition disabled:opacity-60"
-            >
-              {generating ? "Generando..." : "Generar slots"}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="bg-slate-800/60 border border-white/10 rounded-lg p-6 shadow-lg space-y-4">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold">Mis slots</h2>
-            <p className="text-sm text-gray-400">
-              Consulta y actualiza la disponibilidad de cada espacio.
-            </p>
-          </div>
-          <form className="flex gap-2 items-center" onSubmit={handleFilter}>
-            <label className="text-sm text-gray-300 flex items-center gap-2">
-              <span>Fecha:</span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-              />
-            </label>
-            <button
-              type="submit"
-              className="bg-slate-900 border border-white/20 text-white px-4 py-2 rounded-full text-sm hover:border-pink-500/60 transition"
-            >
-              Filtrar
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                setSelectedDate("");
-                await loadSlots();
-              }}
-              className="text-sm text-gray-300 hover:text-yellow-300 transition"
-            >
-              Limpiar
-            </button>
-          </form>
-        </div>
-
-        {loadingSlots ? (
-          <p className="text-gray-300">Cargando slots...</p>
-        ) : slots.length === 0 ? (
-          <p className="text-gray-400">Aun no tienes slots generados.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead>
-                <tr className="text-left text-sm text-gray-300">
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Horario</th>
-                  <th className="px-4 py-3">Servicio</th>
-                  <th className="px-4 py-3">Estado</th>
-                  <th className="px-4 py-3">Accion</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-sm">
-                {slots.map((slot) => (
-                  <tr key={slot.id} className="hover:bg-white/5 transition">
-                    <td className="px-4 py-3">
-                      {new Date(slot.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      {slot.startTime} - {slot.endTime}
-                    </td>
-                    <td className="px-4 py-3">
-                      {slot.service?.name ?? "Servicio"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 text-white">
-                        {STATUS_LABEL[slot.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <select
-                          value={slot.status}
-                          onChange={(event) =>
-                            void handleStatusChange(
-                              slot.id,
-                              event.target.value as ServiceSlotStatus,
-                            )
-                          }
-                          className="bg-slate-900 border border-white/10 rounded px-3 py-1 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
-                        >
-                          {EDITABLE_STATUSES.map((status) => (
-                            <option key={status} value={status}>
-                              {STATUS_LABEL[status]}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-4 rounded-lg border border-white/10 bg-slate-800/60 p-6 shadow-lg">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Proximas citas confirmadas</h2>
-            <p className="text-sm text-gray-400">
-              Visualiza las reservas pendientes para prepararte con tiempo.
-            </p>
-          </div>
-        </div>
-
-        {loadingAppointments ? (
-          <p className="text-gray-300">Cargando citas...</p>
-        ) : appointmentsError ? (
-          <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {appointmentsError}
+    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-28 pb-16 text-white">
+      <section className="mx-auto max-w-6xl px-4">
+        <header className="flex flex-col gap-3 text-center">
+          <p className="text-xs uppercase tracking-[0.4em] text-pink-300">Panel de Control</p>
+          <h1 className="text-4xl font-semibold">Gestión de Slots</h1>
+          <p className="text-sm text-gray-300 sm:text-base">
+            Genera tu agenda diaria y administra la disponibilidad de cada slot.
           </p>
-        ) : upcomingAppointments.length === 0 ? (
-          <p className="text-gray-400">No tienes citas proximas.</p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {upcomingAppointments.map((appointment) => (
-              <article
-                key={appointment.id}
-                className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-gray-200"
-              >
-                <header className="flex items-center justify-between gap-4">
-                  <h3 className="text-base font-semibold text-white">
-                    {appointment.service?.name ?? "Servicio"}
-                  </h3>
-                  <span className="rounded-full border border-yellow-400/40 px-3 py-1 text-xs font-semibold text-yellow-200">
-                    {appointment.startTime.slice(0, 5)} hs
-                  </span>
-                </header>
-                <p className="mt-2 text-xs uppercase tracking-wider text-gray-400">
-                  {new Date(`${appointment.date}T${appointment.startTime}`).toLocaleString("es-ES", {
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "short",
-                  })}
-                </p>
-                <p className="mt-2 text-xs text-gray-300">
-                  Cliente: {appointment.client?.fullName ?? appointment.client?.email ?? "N/A"}
-                </p>
-                {appointment.notes && (
-                  <p className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
-                    Nota: {appointment.notes}
-                  </p>
-                )}
-              </article>
-            ))}
+        </header>
+
+        {error && (
+          <div className="mt-8 rounded-3xl border border-red-400/40 bg-red-500/10 px-6 py-5 text-center text-sm text-red-200">
+            {error}
           </div>
         )}
+        {message && (
+          <div className="mt-8 rounded-3xl border border-green-400/40 bg-green-500/10 px-6 py-5 text-center text-sm text-green-200">
+            {message}
+          </div>
+        )}
+
+        <div className="mt-12 grid gap-8">
+          {/* Sección de generación de slots */}
+          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl">
+            <h2 className="text-xl font-semibold mb-4">Generar nuevos slots</h2>
+            <form className="grid gap-4 md:grid-cols-2" onSubmit={handleGenerate}>
+              <label className="flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-wider text-gray-400">Servicio</span>
+                <select
+                  name="serviceId"
+                  value={form.serviceId}
+                  onChange={handleFormChange}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
+                  required
+                  disabled={loadingServices}
+                >
+                  <option value="">Selecciona un servicio</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} - {service.durationMinutes} min
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-sm text-gray-300">Fecha</span>
+                <input
+                  type="date"
+                  name="date"
+                  value={form.date}
+                  onChange={handleFormChange}
+                  className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
+                  required
+                />
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-sm text-gray-300">Hora de inicio</span>
+                <input
+                  type="time"
+                  name="startTime"
+                  value={form.startTime}
+                  onChange={handleFormChange}
+                  className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
+                  required
+                />
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-sm text-gray-300">Hora de fin</span>
+                <input
+                  type="time"
+                  name="endTime"
+                  value={form.endTime}
+                  onChange={handleFormChange}
+                  className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
+                  required
+                />
+              </label>
+
+              <label className="flex flex-col gap-2 md:col-span-2">
+                <span className="text-sm text-gray-300">
+                  Duracion por slot (opcional, en minutos)
+                </span>
+                <input
+                  type="number"
+                  name="durationMinutes"
+                  min={5}
+                  value={form.durationMinutes}
+                  onChange={handleFormChange}
+                  placeholder="Se usara la Duracion del servicio si lo dejas vacio"
+                  className="bg-slate-900 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
+                />
+              </label>
+
+              <div className="md:col-span-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={generating || loadingServices}
+                  className="rounded-full px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 disabled:opacity-50 transition-all duration-200"
+                >
+                  {generating ? "Generando..." : "Generar slots"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* Sección de lista de slots */}
+          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Mis slots</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Consulta y actualiza la disponibilidad de cada espacio.
+                </p>
+              </div>
+              <form className="flex gap-2 items-center" onSubmit={handleFilter}>
+                <label className="text-sm flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-gray-400">Fecha:</span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(event) => setSelectedDate(event.target.value)}
+                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="rounded-full px-4 py-2 text-sm border border-white/10 hover:border-pink-500/40 transition-colors duration-200"
+                >
+                  Filtrar
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSelectedDate("");
+                    await loadSlots();
+                  }}
+                  className="text-sm text-gray-400 hover:text-pink-400 transition-colors duration-200"
+                >
+                  Limpiar
+                </button>
+              </form>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-gray-400">
+                      Fecha
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-gray-400">
+                      Horario
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-gray-400">
+                      Servicio
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-gray-400">
+                      Estado
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-gray-400">
+                      Acción
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {slots.map((slot) => (
+                    <tr key={slot.id} className="hover:bg-white/5 transition-colors duration-200">
+                      <td className="px-4 py-3">
+                        {new Date(slot.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {slot.startTime} - {slot.endTime}
+                      </td>
+                      <td className="px-4 py-3">
+                        {slot.service?.name ?? "Servicio"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 text-white">
+                          {STATUS_LABEL[slot.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <select
+                            value={slot.status}
+                            onChange={(event) =>
+                              void handleStatusChange(
+                                slot.id,
+                                event.target.value as ServiceSlotStatus,
+                              )
+                            }
+                            className="bg-slate-900 border border-white/10 rounded px-3 py-1 text-sm focus:outline-none focus:ring focus:ring-pink-500/40"
+                          >
+                            {EDITABLE_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {STATUS_LABEL[status]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Sección de próximas citas */}
+          <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Próximas citas confirmadas</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Visualiza las reservas pendientes para prepararte con tiempo.
+              </p>
+            </div>
+
+            {loadingAppointments ? (
+              <p className="text-gray-400">Cargando citas...</p>
+            ) : appointmentsError ? (
+              <p className="rounded-lg bg-red-500/10 border border-red-500/40 text-red-300 px-4 py-3">
+                {appointmentsError}
+              </p>
+            ) : upcomingAppointments.length === 0 ? (
+              <p className="text-gray-400">No tienes citas próximas.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {upcomingAppointments.map((appointment) => (
+                  <article
+                    key={appointment.id}
+                    className="rounded-lg bg-white/5 border border-white/10 p-4"
+                  >
+                    <header className="flex items-center justify-between gap-4">
+                      <h3 className="font-medium">{appointment.service?.name ?? "Servicio"}</h3>
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-500/20 text-violet-300">
+                        {appointment.startTime.slice(0, 5)} hs
+                      </span>
+                    </header>
+                    <p className="mt-2 text-xs uppercase tracking-wider text-gray-400">
+                      {new Date(`${appointment.date}T${appointment.startTime}`).toLocaleString("es-ES", {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-300">
+                      Cliente: {appointment.client?.fullName ?? appointment.client?.email ?? "N/A"}
+                    </p>
+                    {appointment.notes && (
+                      <p className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
+                        Nota: {appointment.notes}
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </section>
-    </section>
+    </main>
   );
 }
