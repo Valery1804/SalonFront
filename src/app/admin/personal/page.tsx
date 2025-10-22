@@ -1,368 +1,371 @@
 "use client";
-
-import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import Modal from "@/components/Modal";
-import { getAllUsers, updateUser } from "@/service/userService";
-import { getErrorMessage } from "@/utils/error";
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/providers/ToastProvider";
-import type { ProviderType, User } from "@/types/user";
-import {
-  FaCheckCircle,
-  FaEdit,
-  FaEnvelope,
-  FaPhoneAlt,
-  FaPlus,
-  FaUserCheck,
-  FaUserTimes,
-} from "react-icons/fa";
+import { createUser } from "@/service/userService";
+import { getErrorMessage } from "@/utils/error";
+import type { ProviderType, UserRole } from "@/types/user";
+import PasswordRequirements, { usePasswordValidation } from "@/components/ui/PasswordRequirements";
 
-const PROVIDER_OPTIONS: Array<{ value: ProviderType | "todos"; label: string }> = [
-  { value: "todos", label: "Todos" },
-  { value: "barbero", label: "Barberos" },
-  { value: "estilista", label: "Estilistas" },
-  { value: "manicurista", label: "Manicuristas" },
-  { value: "maquilladora", label: "Maquilladoras" },
+const roles = [
+  { value: "prestador_servicio", label: "Prestador de servicio" },
+  { value: "admin", label: "Administrador" },
+];
+const providerTypes = [
+  { value: "barbero", label: "Barbero" },
+  { value: "maquilladora", label: "Maquilladora" },
+  { value: "estilista", label: "Estilista" },
+  { value: "manicurista", label: "Manicurista" },
 ];
 
-export default function AdminPersonalSalon() {
+type FormState = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: UserRole;
+  providerType: ProviderType;
+  profileImage: string;
+};
+
+const initialFormState: FormState = {
+  email: "",
+  password: "",
+  confirmPassword: "",
+  firstName: "",
+  lastName: "",
+  phone: "",
+  role: "prestador_servicio",
+  providerType: "barbero",
+  profileImage: "",
+};
+
+type TextFieldName = Exclude<keyof FormState, "role" | "providerType" | "profileImage">;
+type FormFieldEvent = ChangeEvent<HTMLInputElement | HTMLSelectElement>;
+
+export default function AgregarPersonal() {
+  const router = useRouter();
   const { showToast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [providerFilter, setProviderFilter] = useState<ProviderType | "todos">(
-    "todos",
-  );
-  const [statusFilter, setStatusFilter] = useState<"todos" | "activos" | "inactivos">(
-    "todos",
-  );
-  const [search, setSearch] = useState("");
-  const [targetUser, setTargetUser] = useState<User | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [form, setForm] = useState<FormState>({ ...initialFormState });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const { isValid: isPasswordValid } = usePasswordValidation(form.password);
+  const { isValid: isConfirmPasswordValid } = usePasswordValidation(form.confirmPassword);
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await getAllUsers();
-      const staff = data.filter((user) => user.role !== "cliente");
-      setUsers(staff);
-    } catch (caughtError: unknown) {
-      const message = getErrorMessage(
-        caughtError,
-        "No se pudo cargar el personal del salón",
-      );
-      setError(message);
-      showToast({ variant: "error", description: message });
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
+  const handleChange = (event: FormFieldEvent) => {
+    const { name, value } = event.target;
 
-  useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
+    setForm((prev) => {
+      if (name === "role") {
+        return { ...prev, role: value as UserRole };
+      }
 
-  const filteredUsers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return users.filter((user) => {
-      const matchesProvider =
-        providerFilter === "todos" || user.providerType === providerFilter;
-      const matchesStatus =
-        statusFilter === "todos" ||
-        (statusFilter === "activos" && user.isActive) ||
-        (statusFilter === "inactivos" && !user.isActive);
-      const matchesSearch =
-        query.length === 0 ||
-        `${user.fullName ?? ""} ${user.email}`.toLowerCase().includes(query);
-      return matchesProvider && matchesStatus && matchesSearch;
+      if (name === "providerType") {
+        return { ...prev, providerType: value as ProviderType };
+      }
+
+      return {
+        ...prev,
+        [name as TextFieldName]: value,
+      };
     });
-  }, [providerFilter, search, statusFilter, users]);
+  };
 
-  const toggleActive = async () => {
-    if (!targetUser) return;
-    setProcessing(true);
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setImagePreview("");
+      setForm((prev) => ({ ...prev, profileImage: "" }));
+      return;
+    }
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith("image/")) {
+      setError("Por favor selecciona un archivo de imagen válido");
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError("La imagen no debe superar los 5MB");
+      return;
+    }
+
+    // Convertir a base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setImagePreview(base64String);
+      setForm((prev) => ({ ...prev, profileImage: base64String }));
+    };
+    reader.onerror = () => {
+      setError("Error al leer la imagen");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    // Validar que la contraseña cumpla con los requisitos
+    if (!isPasswordValid) {
+      setError("La contraseña no cumple con los requisitos de complejidad");
+      setLoading(false);
+      return;
+    }
+
+    // Validar que la confirmación también cumpla con los requisitos
+    if (!isConfirmPasswordValid) {
+      setError("La confirmación de contraseña no cumple con los requisitos de complejidad");
+      setLoading(false);
+      return;
+    }
+
+    // Validar que las contraseñas coincidan
+    if (form.password !== form.confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const updated = await updateUser(targetUser.id, {
-        isActive: !targetUser.isActive,
-      });
-      setUsers((prev) =>
-        prev.map((user) => (user.id === updated.id ? updated : user)),
-      );
+      // Enviar solo los campos necesarios (sin confirmPassword)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { confirmPassword, ...userData } = form;
+      await createUser(userData);
+      setSuccess("Personal registrado exitosamente");
+      setForm({ ...initialFormState });
+      setImagePreview("");
       showToast({
         variant: "success",
-        title: `Usuario ${updated.isActive ? "habilitado" : "deshabilitado"}`,
-        description: `${updated.fullName ?? updated.email} ahora está ${
-          updated.isActive ? "activo" : "inactivo"
-        }.`,
+        title: "Nuevo integrante agregado",
+        description: "El personal fue registrado correctamente.",
       });
-      setTargetUser(null);
-    } catch (caughtError: unknown) {
-      const message = getErrorMessage(
-        caughtError,
-        "No se pudo actualizar el estado del usuario",
-      );
-      setError(message);
-      showToast({ variant: "error", description: message });
+      router.replace("/admin/personal");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "No se pudo registrar el personal"));
     } finally {
-      setProcessing(false);
+  setLoading(false);
     }
   };
 
   return (
-    <section className="space-y-8">
-      <header className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-white/50">
-              Equipo SalonClick
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">
-              Coordina tu talento desde un solo lugar
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm text-white/70">
-              Filtra por especialidad, verifica el estado de sus cuentas y mantén
-              actualizada la base de talento disponible para tus clientes.
-            </p>
-          </div>
-          <Link
-            href="/admin/personal/agregar"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/40 transition hover:shadow-pink-500/60"
-          >
-            <FaPlus className="text-sm" />
-            Agregar nuevo personal
-          </Link>
+    <section className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-slate-900/70 p-8 text-white shadow-2xl backdrop-blur">
+      <header className="mb-8 space-y-3 text-center sm:text-left">
+        <p className="text-xs uppercase tracking-[0.4em] text-pink-300">
+          Alta de personal
+        </p>
+        <h1 className="text-3xl font-semibold">Registra nuevos especialistas</h1>
+        <p className="text-sm text-white/70">
+          Completa los datos esenciales para habilitar su acceso al panel administrativo y
+          asignar su rol dentro del salón.
+        </p>
+      </header>
+
+      <form
+        onSubmit={handleSubmit}
+        className="grid gap-5 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-inner"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <LabeledField label="Nombre">
+            <input
+              name="firstName"
+              type="text"
+              required
+              value={form.firstName}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+            />
+          </LabeledField>
+          <LabeledField label="Apellido">
+            <input
+              name="lastName"
+              type="text"
+              required
+              value={form.lastName}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+            />
+          </LabeledField>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        <LabeledField label="Correo electrónico">
+          <input
+            name="email"
+            type="email"
+            required
+            value={form.email}
+            onChange={handleChange}
+            className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+          />
+        </LabeledField>
+
+        <LabeledField label="Teléfono">
+          <input
+            name="phone"
+            type="text"
+            required
+            value={form.phone}
+            onChange={handleChange}
+            className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+          />
+        </LabeledField>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <LabeledField label="Contraseña provisional">
             <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nombre o correo..."
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+              name="password"
+              type="password"
+              required
+              value={form.password}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
             />
+          </LabeledField>
+          <LabeledField label="Confirmar contraseña">
+            <input
+              name="confirmPassword"
+              type="password"
+              required
+              value={form.confirmPassword}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+            />
+          </LabeledField>
+        </div>
+
+        {form.password && (
+          <PasswordRequirements password={form.password} />
+        )}
+
+        {form.confirmPassword && (
+          <div className="space-y-3">
+            <PasswordRequirements password={form.confirmPassword} />
+            {form.password && form.confirmPassword && (
+              <div
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+                  form.password === form.confirmPassword
+                    ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+                    : "border-orange-400/40 bg-orange-500/10 text-orange-200"
+                }`}
+              >
+                <span className="text-lg">
+                  {form.password === form.confirmPassword ? "✓" : "✗"}
+                </span>
+                <span>
+                  {form.password === form.confirmPassword
+                    ? "Las contraseñas coinciden"
+                    : "Las contraseñas no coinciden"}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center rounded-2xl border border-white/10 bg-slate-950/60 px-3 text-sm text-white">
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <LabeledField label="Rol">
             <select
-              value={providerFilter}
-              onChange={(event) =>
-                setProviderFilter(event.target.value as ProviderType | "todos")
-              }
-              className="w-full bg-transparent py-2 focus:outline-none"
+              name="role"
+              value={form.role}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
             >
-              {PROVIDER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {roles.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
                 </option>
               ))}
             </select>
-          </div>
-          <div className="flex items-center rounded-2xl border border-white/10 bg-slate-950/60 px-3 text-sm text-white">
+          </LabeledField>
+          <LabeledField label="Especialidad">
             <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as typeof statusFilter)
-              }
-              className="w-full bg-transparent py-2 focus:outline-none"
+              name="providerType"
+              value={form.providerType}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/50"
             >
-              <option value="todos">Todos</option>
-              <option value="activos">Activos</option>
-              <option value="inactivos">Inactivos</option>
+              {providerTypes.map((provider) => (
+                <option key={provider.value} value={provider.value}>
+                  {provider.label}
+                </option>
+              ))}
             </select>
-          </div>
+          </LabeledField>
         </div>
 
+        <LabeledField label="Foto de perfil">
+          <div className="space-y-4">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white file:mr-4 file:rounded-lg file:border-0 file:bg-pink-500/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-pink-200 hover:file:bg-pink-500/30 focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+            />
+            {imagePreview && (
+              <div className="flex justify-center">
+                <div className="relative h-32 w-32 overflow-hidden rounded-2xl border-2 border-pink-400/30 shadow-lg">
+                  <img
+                    src={imagePreview}
+                    alt="Vista previa"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-white/50">
+              Tamaño máximo: 5MB. Formatos: JPG, PNG, GIF, WebP
+            </p>
+          </div>
+        </LabeledField>
+
         {error ? (
-          <p className="mt-4 rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <p className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </p>
         ) : null}
-      </header>
+        {success ? (
+          <p className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+            {success}
+          </p>
+        ) : null}
 
-      {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-48 animate-pulse rounded-3xl bg-white/5" />
-          ))}
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40"
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading || !isPasswordValid || !isConfirmPasswordValid || form.password !== form.confirmPassword}
+            className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-500/40 transition hover:shadow-pink-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Registrando..." : "Registrar personal"}
+          </button>
         </div>
-      ) : filteredUsers.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/5 px-6 py-10 text-center text-sm text-gray-300">
-          No se encontraron integrantes con esos criterios. Intenta ampliar los filtros o
-          agrega nuevos miembros al equipo.
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {filteredUsers.map((user) => (
-            <article
-              key={user.id}
-              className="flex h-full flex-col gap-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-xl transition hover:border-pink-400/50"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  {user.profileImage ? (
-                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border-2 border-pink-400/30">
-                      <img
-                        src={user.profileImage}
-                        alt={user.fullName || user.email}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border-2 border-white/10 bg-gradient-to-br from-pink-500/20 to-orange-400/20">
-                      <span className="text-2xl font-bold text-white">
-                        {(user.firstName?.[0] || user.email[0]).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">
-                      {user.providerType
-                        ? user.providerType.replace("_", " ")
-                        : user.role === "admin"
-                          ? "Administrador"
-                          : "Equipo"}
-                    </p>
-                    <h3 className="mt-1 text-xl font-semibold text-white">
-                      {user.fullName?.trim() ||
-                        `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
-                        user.email}
-                    </h3>
-                    <p className="text-xs text-gray-400">{user.email}</p>
-                  </div>
-                </div>
-                <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                    user.isActive
-                      ? "border border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-                      : "border border-red-400/40 bg-red-500/10 text-red-200"
-                  }`}
-                >
-                  {user.isActive ? "Activo" : "Inactivo"}
-                </span>
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-300">
-                <InfoRow
-                  icon={<FaEnvelope className="text-pink-300" />}
-                  label="Correo"
-                  value={user.email}
-                />
-                <InfoRow
-                  icon={<FaPhoneAlt className="text-cyan-300" />}
-                  label="Teléfono"
-                  value={user.phone ?? "Sin registrar"}
-                />
-                <InfoRow
-                  icon={<FaCheckCircle className="text-yellow-300" />}
-                  label="Verificación"
-                  value={user.emailVerified ? "Correo verificado" : "Pendiente"}
-                />
-              </div>
-
-              <div className="mt-auto flex flex-wrap gap-3 text-sm">
-                <Link
-                  href={`/admin/personal/${user.id}/editar`}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-pink-400/40 px-4 py-2 font-semibold text-pink-200 transition hover:border-pink-400/60 hover:text-pink-100"
-                >
-                  <FaEdit className="text-xs" />
-                  Editar
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setTargetUser(user)}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold transition hover:border-white/35 ${
-                    user.isActive
-                      ? "border-red-400/40 text-red-200 hover:text-red-100"
-                      : "border-emerald-400/40 text-emerald-200 hover:text-emerald-100"
-                  }`}
-                >
-                  {user.isActive ? (
-                    <>
-                      <FaUserTimes className="text-xs" />
-                      Deshabilitar
-                    </>
-                  ) : (
-                    <>
-                      <FaUserCheck className="text-xs" />
-                      Habilitar
-                    </>
-                  )}
-                </button>
-                <Link
-                  href={`mailto:${user.email}`}
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 font-semibold text-white transition hover:border-white/35"
-                >
-                  Contactar
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-
-      <Modal open={targetUser !== null} onClose={() => setTargetUser(null)}>
-        <div className="space-y-4 text-white">
-          <header>
-            <h3 className="text-2xl font-semibold">
-              {targetUser?.isActive ? "Deshabilitar" : "Habilitar"} acceso
-            </h3>
-            <p className="mt-1 text-sm text-gray-300">
-              Esta acción cambiará el estado de acceso de{" "}
-              <strong>{targetUser?.fullName ?? targetUser?.email}</strong>.
-            </p>
-          </header>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-200">
-            {targetUser?.email}
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => setTargetUser(null)}
-              className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
-              disabled={processing}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={() => void toggleActive()}
-              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:shadow-pink-500/50 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={processing}
-            >
-              {processing ? "Actualizando..." : targetUser?.isActive ? "Deshabilitar" : "Habilitar"}
-            </button>
-          </div>
-        </div>
-      </Modal>
+      </form>
     </section>
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function LabeledField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <p className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs">
-      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-950/50">
-        {icon}
+    <label className="space-y-2 text-sm text-white/80">
+      <span className="text-xs uppercase tracking-[0.3em] text-white/50">
+        {label}
       </span>
-      <span className="text-xs text-white/60">{label}</span>
-      <span className="text-sm font-semibold text-white">{value}</span>
-    </p>
+      {children}
+    </label>
   );
 }

@@ -5,13 +5,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/providers/AuthProvider";
+import { 
+  FaChartBar, 
+  FaCalendarAlt, 
+  FaCut, 
+  FaUsers, 
+  FaClipboardList,
+  FaSignOutAlt
+} from 'react-icons/fa';
 
 const NAV_ITEMS = [
-  { href: "/admin/inicio", label: "Resumen" },
-  { href: "/admin/agenda", label: "Agenda" },
-  { href: "/admin/servicios", label: "Servicios" },
-  { href: "/admin/personal", label: "Personal" },
-  { href: "/admin/reportes", label: "Reportes" },
+  { href: "/admin/inicio", label: "Resumen", icon: <FaChartBar /> },
+  { href: "/admin/agenda", label: "Agenda", icon: <FaCalendarAlt /> },
+  { href: "/admin/servicios", label: "Servicios", icon: <FaCut /> },
+  { href: "/admin/personal", label: "Personal", icon: <FaUsers /> },
+  { href: "/admin/reportes", label: "Reportes", icon: <FaClipboardList /> },
 ];
 
 export default function AdminLayout({
@@ -79,37 +87,82 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 px-4 py-4 backdrop-blur-lg md:px-10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-pink-300">
-              Panel SalonClick
-            </p>
-            <h1 className="text-2xl font-semibold text-white">
-              Bienvenido, {user?.firstName ?? user?.email ?? "Admin"}
-            </h1>
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 backdrop-blur-lg">
+        <div className="mx-auto max-w-7xl px-6 py-5 md:px-8">
+          <div className="flex items-center justify-between">
+            {/* Logo and User Info */}
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-r from-pink-500 to-orange-400 p-2 flex items-center justify-center">
+                  <span className="text-2xl font-bold">SC</span>
+                </div>
+                <div>
+                  <p className="text-sm uppercase tracking-[0.4em] text-pink-300">
+                    Panel SalonClick
+                  </p>
+                  <h1 className="text-xl font-semibold text-white">
+                    {user?.firstName ?? user?.email ?? "Admin"}
+                  </h1>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="hidden md:flex items-center gap-2">
+              {NAV_ITEMS.map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`group flex items-center gap-3 rounded-xl px-5 py-3 text-base font-medium transition-all duration-200 ${
+                      active
+                        ? "bg-gradient-to-r from-pink-500/20 to-orange-400/20 text-white"
+                        : "hover:bg-white/5 text-gray-300 hover:text-white"
+                    }`}
+                  >
+                    <span className={`text-xl ${active ? 'text-pink-400' : 'text-gray-400 group-hover:text-pink-400'}`}>
+                      {item.icon}
+                    </span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* User Actions */}
+            <div className="flex items-center gap-4">
+              
+            </div>
           </div>
-          <nav className="flex flex-wrap gap-2">
-            {NAV_ITEMS.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`group inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium transition ${
-                    active
-                      ? "border-yellow-400/60 bg-yellow-400/20 text-white shadow-lg shadow-yellow-300/20"
-                      : "border-white/10 text-gray-200 hover:border-pink-400/60 hover:text-pink-200"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10 md:px-10">
+
+      {/* Mobile Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-slate-950/80 backdrop-blur-lg md:hidden">
+        <nav className="flex items-center justify-around px-3 py-4">
+          {NAV_ITEMS.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                  active
+                    ? "text-pink-400"
+                    : "text-gray-400 hover:text-pink-400"
+                }`}
+              >
+                <span className="text-2xl">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Main Content with increased padding */}
+      <main className="mx-auto max-w-7xl px-6 pb-28 pt-10 md:px-8 md:pb-20">
         {children}
       </main>
     </div>
