@@ -152,13 +152,20 @@ export default function Header() {
           key={link.key}
           href={link.href}
           onClick={() => setMobileOpen(false)}
-          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+          className={`group relative rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
             link.highlight
               ? "bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50"
-              : "text-gray-300 hover:text-yellow-300"
-          } ${active && !link.highlight ? "text-white" : ""}`}
+              : "hover:text-white"
+          } ${
+            active && !link.highlight
+              ? "text-white after:absolute after:bottom-1 after:left-3 after:right-3 after:h-0.5 after:bg-gradient-to-r after:from-pink-500 after:to-orange-400"
+              : "text-gray-400"
+          }`}
         >
           {link.label}
+          {!link.highlight && (
+            <span className="absolute inset-0 -z-10 scale-75 rounded-lg bg-white/5 opacity-0 transition-all duration-200 group-hover:scale-100 group-hover:opacity-100" />
+          )}
         </Link>
       );
     }
@@ -168,66 +175,86 @@ export default function Header() {
         key={link.key}
         href={link.href}
         onClick={() => setMobileOpen(false)}
-        className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
+        className={`group relative overflow-hidden rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
           link.highlight
             ? "bg-gradient-to-r from-pink-500 to-orange-400 text-white shadow-lg shadow-pink-500/30"
-            : "border border-white/10 text-gray-200 hover:bg-white/10"
+            : "border border-white/10 text-gray-200 hover:border-transparent hover:text-white"
         } ${active && !link.highlight ? "border-pink-400/50 text-white" : ""}`}
       >
         {link.label}
+        {!link.highlight && (
+          <span className="absolute inset-0 -z-10 bg-gradient-to-r from-pink-500/20 to-orange-400/20 opacity-0 transition-all duration-200 group-hover:opacity-100" />
+        )}
       </Link>
     );
   };
 
   return (
-    <header className="fixed left-0 top-0 z-50 w-full border-b border-slate-800/80 bg-slate-900/80 px-5 py-5 backdrop-blur-xl sm:px-8">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+    <header className="fixed left-0 top-0 z-50 w-full border-b border-white/10 bg-slate-900/80 px-5 py-4 backdrop-blur-xl sm:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+        {/* Enhanced Logo */}
         <Link
           href="/"
-          className="flex items-center gap-3 text-2xl font-bold text-white md:text-3xl"
+          className="group relative flex items-center gap-1 text-3xl font-black tracking-tight text-white transition-all duration-300 md:text-4xl lg:text-5xl"
         >
-          <span className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-transparent">
-            Salon
+          <span className="relative">
+            <span className="absolute -inset-2 -skew-x-12 bg-gradient-to-r from-pink-600 to-orange-400 opacity-0 blur-xl transition-all duration-500 group-hover:opacity-40" />
+            <span className="relative bg-gradient-to-r from-white to-white/90 bg-clip-text text-transparent">
+              SALON
+            </span>
           </span>
-          <span className="text-yellow-400">Click</span>
+          <span className="relative">
+            <span className="absolute -inset-2 skew-x-12 bg-gradient-to-r from-yellow-400 to-orange-400 opacity-0 blur-xl transition-all duration-500 group-hover:opacity-40" />
+            <span className="relative bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text font-bold text-transparent">
+              CLICK
+            </span>
+          </span>
+          <div className="absolute -bottom-1.5 left-0 h-px w-full bg-gradient-to-r from-pink-500/0 via-orange-400 to-yellow-400/0 opacity-0 transition-all duration-500 group-hover:opacity-100" />
         </Link>
 
-        <nav className="hidden items-center gap-2 text-sm lg:flex xl:gap-3">
+        {/* Navigation with enhanced styling */}
+        <nav className="hidden items-center gap-1 lg:flex xl:gap-2">
           {navLinks.map((link) => renderNavLink(link, "desktop"))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        {/* Enhanced profile buttons */}
+        <div className="flex items-center gap-3">
           {initializing ? (
-            <div className="h-10 w-24 animate-pulse rounded-full bg-white/10" />
+            <div className="h-11 w-28 animate-pulse rounded-full bg-white/10" />
           ) : user ? (
             <>
               <button
                 type="button"
                 onClick={() => setProfileOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:border-pink-400/60 hover:text-pink-200"
+                className="group relative inline-flex items-center gap-3 rounded-full border border-white/10 px-5 py-2.5 text-base font-medium text-white transition-all duration-200 hover:border-transparent"
               >
-                <FaUser className="text-xs" />
-                <span>{displayName || "Perfil"}</span>
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500/20 to-orange-400/20 opacity-0 transition-all duration-200 group-hover:opacity-100" />
+                <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400">
+                  <FaUser className="text-sm text-white transition-all duration-200 group-hover:scale-110" />
+                </span>
+                <span className="relative">{displayName || "Perfil"}</span>
               </button>
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition hover:border-white/30 lg:hidden"
+                className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-white transition-all duration-200 hover:border-transparent lg:hidden"
                 onClick={() => setMobileOpen((prev) => !prev)}
               >
-                {mobileOpen ? <FiX className="text-xl" /> : <FiMenu className="text-xl" />}
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500/20 to-orange-400/20 opacity-0 transition-all duration-200 group-hover:opacity-100" />
+                {mobileOpen ? <FiX className="text-2xl" /> : <FiMenu className="text-2xl" />}
               </button>
             </>
           ) : (
             <>
               <Link
                 href="/auth/login"
-                className="inline-flex items-center justify-center rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+                className="group relative inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-base font-medium text-white transition-all duration-200 hover:border-transparent"
               >
-                Iniciar sesion
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500/20 to-orange-400/20 opacity-0 transition-all duration-200 group-hover:opacity-100" />
+                <span className="relative">Iniciar sesión</span>
               </Link>
               <Link
                 href="/auth/register"
-                className="hidden items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-pink-500/30 transition hover:shadow-pink-500/50 sm:inline-flex"
+                className="hidden items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-2.5 text-base font-medium text-white shadow-lg shadow-pink-500/30 transition-all duration-200 hover:shadow-pink-500/50 hover:brightness-110 sm:inline-flex"
               >
                 Registrarse
               </Link>
